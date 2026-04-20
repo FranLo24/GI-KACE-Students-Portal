@@ -1,0 +1,63 @@
+GI-KACE COURSE REGISTRATION FORM
+1. Personal Information
+* Full Name: __________________________________________ 
+* Gender: ? Male ? Female 
+* Nationality: ________________________________________ 
+* ID Type: ? Ghana Card ? Passport ? Other: __________ 
+* ID Number: ________________________________________ 
+
+2. Contact Information
+* Phone Number: _____________________________________ 
+* Alternative Phone: _________________________________ 
+* Email Address: ____________________________________ 
+* Residential Address: ________________________________ 
+* City/Town: ________________________________________ 
+
+3. Educational Background
+* Highest Level of Education:
+? High School
+? Diploma
+? Bachelor’s Degree
+? Master’s Degree
+? Other: __________________ 
+* Field of Study: _____________________________________ 
+
+4. Employment Information (if applicable)
+* Employment Status:
+? Employed
+? Self-Employed
+? Unemployed
+? Student 
+* Organization Name: _________________________________ 
+* Job Title: _________________________________________ 
+* Years of Experience: _______________________________ 
+
+5. Course Details
+* Course Title: ______________________________________ 
+* Course Category:
+? Cybersecurity 
+? Data Analytics with Python
+? Data Analytics with BI
+? Certificate in Software Development
+? CCNA
+? Diploma in Business Computing 
+? Office Productivity suite
+? Corporate Trainings
+? Other: __________________ 
+
+6. ICT Skills & Experience
+* Level of Computer Literacy:
+? Beginner
+? Intermediate
+? Advanced 
+* Relevant Skills/Experience:
+
+
+
+
+7. Emergency Contact
+* Name: ______________________________________ 
+* Relationship: ________________________________ 
+* Phone Number: _______________________________ 
+ 
+
