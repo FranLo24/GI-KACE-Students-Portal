@@ -27,7 +27,7 @@ export default function Navbar() {
           </div>
         </NavLink>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 rounded-full border border-white/70 bg-white/70 p-1.5 shadow-lg shadow-slate-200/50">
+        <div className="flex flex-wrap items-center justify-end gap-2 rounded-full border border-blue/70 bg-white/70 p-1.5 shadow-lg shadow-slate-200/50">
           <NavLink to="/" end className={linkClass}>
             Home
           </NavLink>

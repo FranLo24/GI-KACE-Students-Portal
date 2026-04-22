@@ -163,7 +163,7 @@ function ViewModal({ student, onClose }) {
   );
 }
 
-function EditModal({ student, onClose, onSaved }) {
+function EditModal({ student, onClose, onSaved, onUnauthorized }) {
   const [form, setForm] = useState({ ...student });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -180,7 +180,12 @@ function EditModal({ student, onClose, onSaved }) {
     try {
       await api.put('/admin/students/' + student.id, form);
       onSaved();
-    } catch {
+    } catch (error) {
+      if (error.response?.status === 401) {
+        onUnauthorized();
+        return;
+      }
+
       setError('Failed to save changes. Please try again.');
     } finally {
       setLoading(false);
@@ -338,6 +343,11 @@ export default function AdminDashboard() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  const handleUnauthorizedAccess = useCallback(() => {
+    logout();
+    navigate('/secure-access/login', { replace: true });
+  }, [logout, navigate]);
+
   const [students, setStudents] = useState([]);
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -360,20 +370,24 @@ export default function AdminDashboard() {
       const res = await api.get('/admin/students', { params: query ? { q: query } : {} });
       setStudents(res.data);
       setPage(1);
-    } catch {
+    } catch (error) {
+      if (error.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+
       setFetchError('Failed to load students. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [handleUnauthorizedAccess]);
 
   useEffect(() => {
     fetchStudents(debouncedSearch);
   }, [debouncedSearch, fetchStudents]);
 
   function handleLogout() {
-    logout();
-    navigate('/secure-access/login');
+    handleUnauthorizedAccess();
   }
 
   async function handleDelete() {
@@ -383,8 +397,14 @@ export default function AdminDashboard() {
       setDeleteStudent(null);
       setSuccessModal('Student record deleted successfully.');
       fetchStudents(debouncedSearch);
-    } catch {
+    } catch (error) {
       setDeleteStudent(null);
+
+      if (error.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+
       setFetchError('Failed to delete student. Please try again.');
     } finally {
       setDeleteLoading(false);
@@ -578,7 +598,7 @@ export default function AdminDashboard() {
                       className={[
                         'rounded-full px-4 py-2 text-sm font-semibold transition duration-300',
                         pageNumber === page
-                          ? 'bg-gradient-to-r from-blue-500 via-red-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
+                          ? 'bg-gradient-to-r from-blue-500 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
                           : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700',
                       ].join(' ')}
                     >
@@ -603,7 +623,12 @@ export default function AdminDashboard() {
       {viewStudent && <ViewModal student={viewStudent} onClose={() => setViewStudent(null)} />}
 
       {editStudent && (
-        <EditModal student={editStudent} onClose={() => setEditStudent(null)} onSaved={handleEditSaved} />
+        <EditModal
+          student={editStudent}
+          onClose={() => setEditStudent(null)}
+          onSaved={handleEditSaved}
+          onUnauthorized={handleUnauthorizedAccess}
+        />
       )}
 
       {deleteStudent && (

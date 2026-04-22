@@ -63,7 +63,7 @@ function getChipClass(selected) {
   return [
     'cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition duration-300',
     selected
-      ? 'border-transparent bg-gradient-to-r from-blue-500 via-red-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
+      ? 'border-transparent bg-gradient-to-r from-blue-500 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
       : 'border-slate-200 bg-white/80 text-slate-600 hover:border-blue-200 hover:text-blue-700',
   ].join(' ');
 }
