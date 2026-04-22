@@ -386,9 +386,9 @@ export default function Register() {
                     <div className="space-y-3 p-5">
                       <div className="flex items-center justify-between gap-3">
                         <h3 className="text-lg font-semibold text-slate-900">{course.title}</h3>
-                        <span className="rounded-full bg-slate-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
+                        {/* <span className="rounded-full bg-slate-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
                           {course.spotlight}
-                        </span>
+                        </span> */}
                       </div>
                       <p className="text-sm text-slate-600">{course.description}</p>
                       <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">{course.outcomes}</p>
