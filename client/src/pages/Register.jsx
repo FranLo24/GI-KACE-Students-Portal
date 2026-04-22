@@ -79,6 +79,8 @@ export default function Register() {
     control,
     reset,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(registrationSchema),
@@ -121,6 +123,7 @@ export default function Register() {
   const computerLiteracy = useWatch({ control, name: 'computerLiteracy' });
 
   const onSubmit = (data) => {
+    clearErrors(['emailAddress', 'phoneNumber']);
     setPendingData(data);
     setModal({ type: 'confirm' });
   };
@@ -132,6 +135,13 @@ export default function Register() {
       await api.post('/register', pendingData);
       setModal({ type: 'success', name: pendingData.fullName });
     } catch (err) {
+      const fieldErrors = err.response?.data?.fieldErrors;
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field, { type: 'server', message });
+        });
+      }
+
       const message = err.response?.data?.message || 'Registration failed. Please try again.';
       setModal({ type: 'error', message });
     } finally {

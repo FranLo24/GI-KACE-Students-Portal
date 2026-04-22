@@ -19,9 +19,9 @@ model Student {
   idTypeOther           String?
   idNumber              String
 
-  phoneNumber           String
+  phoneNumber           String   @unique
   alternativePhone      String?
-  emailAddress          String
+  emailAddress          String   @unique
   residentialAddress    String
   cityTown              String
 
