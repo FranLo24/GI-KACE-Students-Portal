@@ -122,7 +122,7 @@ function ViewModal({ student, onClose }) {
       <div className="glass-panel animate-rise-in w-full max-w-4xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-white/60 px-6 py-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Student profile</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Student profile</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-900">{student.fullName}</h2>
           </div>
           <button type="button" onClick={onClose} className="portal-button-secondary px-4 py-2">
@@ -192,7 +192,7 @@ function EditModal({ student, onClose, onSaved }) {
       <div key={name}>
         <label className="mb-2 block text-sm font-medium text-slate-700">
           {label}
-          {required && <span className="ml-1 text-rose-500">*</span>}
+          {required && <span className="ml-1 text-blue-500">*</span>}
         </label>
         <input
           type={type}
@@ -211,7 +211,7 @@ function EditModal({ student, onClose, onSaved }) {
       <div key={name}>
         <label className="mb-2 block text-sm font-medium text-slate-700">
           {label}
-          {required && <span className="ml-1 text-rose-500">*</span>}
+          {required && <span className="ml-1 text-blue-500">*</span>}
         </label>
         <select
           name={name}
@@ -236,7 +236,7 @@ function EditModal({ student, onClose, onSaved }) {
       <div className="glass-panel animate-rise-in w-full max-w-5xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-white/60 px-6 py-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Student editor</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Student editor</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-900">Edit Student</h2>
           </div>
           <button type="button" onClick={onClose} className="portal-button-secondary px-4 py-2">
@@ -313,7 +313,7 @@ function EditModal({ student, onClose, onSaved }) {
               </section>
 
               {error && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                   {error}
                 </div>
               )}
@@ -453,15 +453,15 @@ export default function AdminDashboard() {
             <div className="portal-panel p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Session</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Session</p>
                   <h2 className="mt-2 text-2xl font-semibold text-slate-900">Admin Dashboard</h2>
                 </div>
-                <button onClick={handleLogout} className="portal-button-secondary text-rose-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
+                <button onClick={handleLogout} className="portal-button-secondary text-blue-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
                   Logout
                 </button>
               </div>
               <div className="mt-6 rounded-[24px] bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 text-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-200">Search and review</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Search and review</p>
                 <p className="mt-2 text-sm text-slate-200">
                   Filter the full registration database by name, email, phone, or course category.
                 </p>
@@ -476,7 +476,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="portal-panel p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Top categories</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Top categories</p>
               <div className="mt-5 space-y-4">
                 {topCategories.length === 0 ? (
                   <p className="text-sm text-slate-500">Categories will appear here after registrations are submitted.</p>
@@ -485,7 +485,7 @@ export default function AdminDashboard() {
                     <div key={name} className="rounded-[22px] border border-slate-100 bg-slate-50/80 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-semibold text-slate-900">{name}</p>
-                        <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
                           {count}
                         </span>
                       </div>
@@ -498,7 +498,7 @@ export default function AdminDashboard() {
 
           <div className="portal-panel overflow-hidden">
             {fetchError && (
-              <div className="border-b border-rose-100 bg-rose-50 px-6 py-4 text-sm text-rose-700">
+              <div className="border-b border-blue-100 bg-blue-50 px-6 py-4 text-sm text-blue-700">
                 {fetchError}
               </div>
             )}
@@ -529,7 +529,7 @@ export default function AdminDashboard() {
                     </tr>
                   ) : (
                     paginated.map((student, index) => (
-                      <tr key={student.id} className="border-t border-slate-100 transition hover:bg-rose-50/40">
+                      <tr key={student.id} className="border-t border-slate-100 transition hover:bg-blue-50/40">
                         <td className="px-5 py-4 text-slate-500">{(page - 1) * PAGE_SIZE + index + 1}</td>
                         <td className="px-5 py-4 font-semibold text-slate-900">{student.fullName}</td>
                         <td className="px-5 py-4 text-slate-600">{student.emailAddress}</td>
@@ -544,7 +544,7 @@ export default function AdminDashboard() {
                             <button type="button" onClick={() => setEditStudent(student)} className="portal-button-secondary bg-blue-50 text-blue-700 hover:border-blue-200 hover:bg-blue-100 hover:text-blue-700 px-4 py-2 text-xs">
                               Edit
                             </button>
-                            <button type="button" onClick={() => setDeleteStudent(student)} className="portal-button-secondary bg-rose-50 text-rose-700 hover:border-rose-200 hover:bg-rose-100 hover:text-rose-700 px-4 py-2 text-xs">
+                            <button type="button" onClick={() => setDeleteStudent(student)} className="portal-button-secondary bg-blue-50 text-blue-700 hover:border-blue-200 hover:bg-blue-100 hover:text-blue-700 px-4 py-2 text-xs">
                               Delete
                             </button>
                           </div>
@@ -578,8 +578,8 @@ export default function AdminDashboard() {
                       className={[
                         'rounded-full px-4 py-2 text-sm font-semibold transition duration-300',
                         pageNumber === page
-                          ? 'bg-gradient-to-r from-rose-500 via-red-500 to-blue-600 text-white shadow-lg shadow-rose-200/60'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:text-rose-700',
+                          ? 'bg-gradient-to-r from-blue-500 via-red-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700',
                       ].join(' ')}
                     >
                       {pageNumber}

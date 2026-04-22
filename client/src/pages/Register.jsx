@@ -27,14 +27,14 @@ function FieldLabel({ children, optional = false }) {
       {optional ? (
         <span className="font-normal text-slate-400">(optional)</span>
       ) : (
-        <span className="text-rose-500">*</span>
+        <span className="text-blue-500">*</span>
       )}
     </label>
   );
 }
 
 function ErrorMsg({ error }) {
-  return error ? <p className="mt-2 text-xs font-medium text-rose-600">{error.message}</p> : null;
+  return error ? <p className="mt-2 text-xs font-medium text-blue-600">{error.message}</p> : null;
 }
 
 function SectionCard({ number, title, description, children }) {
@@ -42,7 +42,7 @@ function SectionCard({ number, title, description, children }) {
     <section className="portal-panel p-6 sm:p-8">
       <div className="mb-6 flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Section {number}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Section {number}</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-900">{title}</h2>
           {description ? <p className="mt-2 text-sm text-slate-500">{description}</p> : null}
         </div>
@@ -55,7 +55,7 @@ function SectionCard({ number, title, description, children }) {
 function getInputClass(error) {
   return [
     'portal-input',
-    error ? 'border-rose-300 bg-rose-50/80 focus:ring-rose-100' : '',
+    error ? 'border-blue-300 bg-blue-50/80 focus:ring-blue-100' : '',
   ].join(' ');
 }
 
@@ -63,8 +63,8 @@ function getChipClass(selected) {
   return [
     'cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition duration-300',
     selected
-      ? 'border-transparent bg-gradient-to-r from-rose-500 via-red-500 to-blue-600 text-white shadow-lg shadow-rose-200/60'
-      : 'border-slate-200 bg-white/80 text-slate-600 hover:border-rose-200 hover:text-rose-700',
+      ? 'border-transparent bg-gradient-to-r from-blue-500 via-red-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
+      : 'border-slate-200 bg-white/80 text-slate-600 hover:border-blue-200 hover:text-blue-700',
   ].join(' ');
 }
 
@@ -229,12 +229,6 @@ export default function Register() {
                 <ErrorMsg error={errors.nationality} />
               </div>
 
-              <div>
-                <FieldLabel>ID Number</FieldLabel>
-                <input {...register('idNumber')} className={getInputClass(errors.idNumber)} placeholder="Enter your ID number" />
-                <ErrorMsg error={errors.idNumber} />
-              </div>
-
               <div className="md:col-span-2">
                 <FieldLabel>ID Type</FieldLabel>
                 <div className="flex flex-wrap gap-3">
@@ -246,6 +240,12 @@ export default function Register() {
                   ))}
                 </div>
                 <ErrorMsg error={errors.idType} />
+              </div>
+
+              <div>
+                <FieldLabel>ID Number</FieldLabel>
+                <input {...register('idNumber')} className={getInputClass(errors.idNumber)} placeholder="Enter your ID number" />
+                <ErrorMsg error={errors.idNumber} />
               </div>
 
               {idType === 'Other' ? (
@@ -378,7 +378,7 @@ export default function Register() {
                     className={[
                       'group overflow-hidden rounded-[24px] border text-left transition duration-300',
                       selected
-                        ? 'border-rose-300 bg-rose-50/80 shadow-[0_22px_70px_rgba(239,68,68,0.16)]'
+                        ? 'border-blue-300 bg-blue-50/80 shadow-[0_22px_70px_rgba(239,68,68,0.16)]'
                         : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                     ].join(' ')}
                   >
@@ -403,7 +403,7 @@ export default function Register() {
                 className={[
                   'flex min-h-[320px] flex-col justify-between rounded-[24px] border p-6 text-left transition duration-300',
                   courseCategory === 'Other'
-                    ? 'border-rose-300 bg-gradient-to-br from-rose-50 to-blue-50 shadow-[0_22px_70px_rgba(239,68,68,0.16)]'
+                    ? 'border-blue-300 bg-gradient-to-br from-blue-50 to-blue-50 shadow-[0_22px_70px_rgba(239,68,68,0.16)]'
                     : 'border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                 ].join(' ')}
               >
@@ -436,7 +436,7 @@ export default function Register() {
               ) : (
                 <div className="portal-data-card flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-700">Current selection</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Current selection</p>
                     <p className="mt-2 text-lg font-semibold text-slate-900">{courseTitle || 'Choose a course card'}</p>
                     <p className="mt-1 text-sm text-slate-500">{courseCategory || 'No category selected yet'}</p>
                   </div>
@@ -497,7 +497,7 @@ export default function Register() {
 
           <div className="glass-panel flex flex-col items-start justify-between gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-rose-700">Submission</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-700">Submission</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">Fields marked with * are required.</p>
               <p className="mt-1 text-sm text-slate-500">Review your information, then confirm your registration in the next step.</p>
             </div>

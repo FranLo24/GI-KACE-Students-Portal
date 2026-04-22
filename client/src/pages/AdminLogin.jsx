@@ -43,7 +43,7 @@ export default function AdminLogin() {
               className="h-full min-h-[320px] w-full rounded-[24px] object-cover"
             />
             <div className="absolute inset-x-6 bottom-6 rounded-[24px] border border-white/35 bg-slate-950/50 p-6 text-white backdrop-blur-md">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-200">Admin command center</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-200">Admin command center</p>
               <h1 className="mt-3 text-3xl font-semibold">Manage registrations from one focused admin dashboard.</h1>
               <p className="mt-3 max-w-xl text-sm text-slate-200/90">
                 Search student records, review submissions, update details, and keep admissions activity organised in one place.
@@ -90,7 +90,7 @@ export default function AdminLogin() {
               </div>
 
               {error && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                   {error}
                 </div>
               )}

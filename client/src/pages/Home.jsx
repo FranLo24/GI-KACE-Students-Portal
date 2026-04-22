@@ -48,7 +48,7 @@ export default function Home() {
               />
             </div>
             <div className="portal-data-card absolute -bottom-5 left-6 max-w-xs">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-rose-700">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-700">
                 Learning pathways
               </p>
               <p className="mt-2 text-sm text-slate-600">
@@ -108,7 +108,7 @@ export default function Home() {
                     className="h-52 w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent px-5 pb-4 pt-16">
-                    {/* <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-200">
+                    {/* <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-200">
                       {course.spotlight}
                     </p> */}
                   </div>

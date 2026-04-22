@@ -6,8 +6,8 @@ export default function Navbar() {
     [
       'rounded-full px-4 py-2 text-sm font-medium transition duration-300',
       isActive
-        ? 'bg-gradient-to-r from-rose-500 via-red-500 to-blue-600 text-white shadow-lg shadow-rose-200/60'
-        : 'text-slate-700 hover:bg-white hover:text-rose-700',
+        ? 'bg-gradient-to-r from-blue-500 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
+        : 'text-slate-700 hover:bg-white hover:text-blue-700',
     ].join(' ');
 
   return (
@@ -20,7 +20,7 @@ export default function Navbar() {
             className="h-12 w-auto rounded-2xl bg-white/80 p-1 shadow-lg shadow-slate-200/60 transition duration-300 hover:scale-[1.02]"
           />
           <div className="hidden sm:block">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-rose-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-blue-700">
               Students Portal
             </p>
             <p className="text-sm text-slate-500">Apply for ICT programmes with a clear, guided flow</p>

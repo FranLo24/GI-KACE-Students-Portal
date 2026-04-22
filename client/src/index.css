@@ -17,7 +17,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(239, 68, 68, 0.2), transparent 28%),
+    radial-gradient(circle at top left, rgba(66, 43, 228, 0.2), transparent 28%),
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 26%),
     linear-gradient(180deg, #fff7f7 0%, #f7f4ff 52%, #f3f8ff 100%);
   color: #12323d;
@@ -75,7 +75,7 @@ img {
     height: 24rem;
     top: 6rem;
     left: -8rem;
-    background: radial-gradient(circle, rgba(244, 63, 94, 0.2), transparent 68%);
+    background: radial-gradient(circle, rgba(66, 43, 228, 0.2), transparent 68%);
   }
 
   .portal-shell::after {
@@ -115,15 +115,15 @@ img {
   }
 
   .portal-button-primary {
-    @apply portal-button bg-gradient-to-r from-rose-500 via-red-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(239,68,68,0.24)] hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(37,99,235,0.28)];
+    @apply portal-button bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(66,43,228,0.24)] hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(37,99,235,0.28)];
   }
 
   .portal-button-secondary {
-    @apply portal-button border border-slate-200 bg-white/80 text-slate-700 hover:border-rose-200 hover:bg-rose-50;
+    @apply portal-button border border-slate-200 bg-white/80 text-slate-700 hover:border-blue-200 hover:bg-blue-50;
   }
 
   .portal-kicker {
-    @apply inline-flex items-center rounded-full border border-rose-200/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-rose-700;
+    @apply inline-flex items-center rounded-full border border-blue-200/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-blue-700;
   }
 
   .portal-section-title {
@@ -135,7 +135,7 @@ img {
   }
 
   .portal-gradient-text {
-    @apply bg-gradient-to-r from-rose-600 via-red-500 to-blue-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 bg-clip-text text-transparent;
   }
 
   .portal-data-card {
