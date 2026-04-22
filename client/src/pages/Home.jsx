@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import portalHero from '../assets/portal-hero.png';
 import registerHero from '../assets/register-hero.png';
-import { featuredCourses, portalHighlights, portalStats } from '../data/courseCatalog';
+import { featuredCourses, portalStats } from '../data/courseCatalog';
 
 export default function Home() {
   return (
@@ -94,11 +94,11 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="portal-course-grid">
             {featuredCourses.map((course, index) => (
               <article
                 key={course.title}
-                className="portal-panel group overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_rgba(15,23,42,0.12)]"
+                className="group portal-course-card"
                 style={{ animationDelay: index * 90 + 'ms' }}
               >
                 <div className="relative overflow-hidden">
@@ -113,15 +113,15 @@ export default function Home() {
                     </p> */}
                   </div>
                 </div>
-                <div className="space-y-3 p-5">
-                  <div>
+                <div className="portal-course-card-body">
+                  <div className="portal-course-card-copy">
                     <h3 className="text-xl font-semibold text-slate-900">{course.title}</h3>
                     <p className="mt-2 text-sm text-slate-600">{course.description}</p>
                   </div>
                   {/* <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">
                     {course.outcomes}
                   </p> */}
-                  <Link to="/register" className="portal-button-primary w-full">
+                  <Link to="/register" className="portal-course-card-button">
                     Choose this course
                   </Link>
                 </div>
