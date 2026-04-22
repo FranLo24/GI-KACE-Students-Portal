@@ -1,3 +1,199 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  background: #f7f5fb;
+  color: #12323d;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(239, 68, 68, 0.2), transparent 28%),
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 26%),
+    linear-gradient(180deg, #fff7f7 0%, #f7f4ff 52%, #f3f8ff 100%);
+  color: #12323d;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply tracking-tight text-slate-900;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+}
+
+@layer components {
+  .portal-shell {
+    @apply relative isolate overflow-hidden;
+  }
+
+  .portal-shell::before,
+  .portal-shell::after {
+    content: '';
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(10px);
+    opacity: 0.75;
+    z-index: 0;
+  }
+
+  .portal-shell::before {
+    width: 24rem;
+    height: 24rem;
+    top: 6rem;
+    left: -8rem;
+    background: radial-gradient(circle, rgba(244, 63, 94, 0.2), transparent 68%);
+  }
+
+  .portal-shell::after {
+    width: 28rem;
+    height: 28rem;
+    right: -10rem;
+    top: 18rem;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.18), transparent 68%);
+  }
+
+  .portal-container {
+    @apply relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .glass-panel {
+    @apply rounded-[28px] border border-white/70 bg-white/70 backdrop-blur-xl shadow-[0_28px_90px_rgba(15,23,42,0.08)];
+  }
+
+  .portal-panel {
+    @apply rounded-[26px] border border-slate-200/70 bg-white/90 shadow-[0_20px_70px_rgba(15,23,42,0.08)];
+  }
+
+  .portal-input {
+    @apply w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm outline-none transition duration-300 placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100;
+  }
+
+  .portal-select {
+    @apply portal-input appearance-none bg-white;
+  }
+
+  .portal-textarea {
+    @apply portal-input min-h-[132px] resize-none;
+  }
+
+  .portal-button {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition duration-300;
+  }
+
+  .portal-button-primary {
+    @apply portal-button bg-gradient-to-r from-rose-500 via-red-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(239,68,68,0.24)] hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(37,99,235,0.28)];
+  }
+
+  .portal-button-secondary {
+    @apply portal-button border border-slate-200 bg-white/80 text-slate-700 hover:border-rose-200 hover:bg-rose-50;
+  }
+
+  .portal-kicker {
+    @apply inline-flex items-center rounded-full border border-rose-200/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-rose-700;
+  }
+
+  .portal-section-title {
+    @apply text-3xl font-semibold text-slate-900 md:text-4xl;
+  }
+
+  .portal-muted {
+    @apply text-sm text-slate-500;
+  }
+
+  .portal-gradient-text {
+    @apply bg-gradient-to-r from-rose-600 via-red-500 to-blue-600 bg-clip-text text-transparent;
+  }
+
+  .portal-data-card {
+    @apply rounded-[24px] border border-white/70 bg-white/75 px-5 py-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur;
+  }
+}
+
+@layer utilities {
+  .animate-rise-in {
+    animation: riseIn 0.8s ease-out both;
+  }
+
+  .animate-float-soft {
+    animation: floatSoft 6s ease-in-out infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glowPulse 4.6s ease-in-out infinite;
+  }
+
+  .bg-mesh {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSoft {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 18px 55px rgba(239, 68, 68, 0.12);
+  }
+
+  50% {
+    box-shadow: 0 24px 65px rgba(37, 99, 235, 0.18);
+  }
+}
