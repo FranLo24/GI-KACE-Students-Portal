@@ -34,7 +34,11 @@ function FieldLabel({ children, optional = false }) {
 }
 
 function ErrorMsg({ error }) {
-  return error ? <p className="mt-2 text-xs font-medium text-blue-600">{error.message}</p> : null;
+  return error ? (
+    <p role="alert" className="mt-2 text-xs font-medium text-red-600">
+      {error.message}
+    </p>
+  ) : null;
 }
 
 function SectionCard({ number, title, description, children }) {
@@ -55,7 +59,7 @@ function SectionCard({ number, title, description, children }) {
 function getInputClass(error) {
   return [
     'portal-input',
-    error ? 'border-blue-300 bg-blue-50/80 focus:ring-blue-100' : '',
+    error ? 'border-red-300 bg-red-50/80 focus:border-red-400 focus:ring-red-100' : '',
   ].join(' ');
 }
 
@@ -84,6 +88,8 @@ export default function Register() {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(registrationSchema),
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
     defaultValues: {
       fullName: '',
       gender: '',
@@ -216,7 +222,12 @@ export default function Register() {
             <div className="grid gap-5 md:grid-cols-2">
               <div className="md:col-span-2">
                 <FieldLabel>Full Name</FieldLabel>
-                <input {...register('fullName')} className={getInputClass(errors.fullName)} placeholder="Enter your full name" />
+                <input
+                  {...register('fullName')}
+                  className={getInputClass(errors.fullName)}
+                  placeholder="Enter your full name"
+                  autoComplete="name"
+                />
                 <ErrorMsg error={errors.fullName} />
               </div>
 
@@ -235,7 +246,12 @@ export default function Register() {
 
               <div>
                 <FieldLabel>Nationality</FieldLabel>
-                <input {...register('nationality')} className={getInputClass(errors.nationality)} placeholder="e.g. Ghanaian" />
+                <input
+                  {...register('nationality')}
+                  className={getInputClass(errors.nationality)}
+                  placeholder="e.g. Ghanaian"
+                  autoComplete="country-name"
+                />
                 <ErrorMsg error={errors.nationality} />
               </div>
 
@@ -276,27 +292,59 @@ export default function Register() {
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <FieldLabel>Phone Number</FieldLabel>
-                <input {...register('phoneNumber')} className={getInputClass(errors.phoneNumber)} placeholder="e.g. 0241234567" />
+                <input
+                  {...register('phoneNumber')}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={13}
+                  autoComplete="tel"
+                  className={getInputClass(errors.phoneNumber)}
+                  placeholder="e.g. 0241234567 or +233241234567"
+                />
                 <ErrorMsg error={errors.phoneNumber} />
               </div>
               <div>
                 <FieldLabel optional>Alternative Phone</FieldLabel>
-                <input {...register('alternativePhone')} className={getInputClass(errors.alternativePhone)} placeholder="e.g. 0201234567" />
+                <input
+                  {...register('alternativePhone')}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={13}
+                  autoComplete="tel-national"
+                  className={getInputClass(errors.alternativePhone)}
+                  placeholder="e.g. 0201234567 or +233201234567"
+                />
                 <ErrorMsg error={errors.alternativePhone} />
               </div>
               <div>
                 <FieldLabel>Email Address</FieldLabel>
-                <input type="email" {...register('emailAddress')} className={getInputClass(errors.emailAddress)} placeholder="you@example.com" />
+                <input
+                  type="email"
+                  {...register('emailAddress')}
+                  autoComplete="email"
+                  className={getInputClass(errors.emailAddress)}
+                  placeholder="you@example.com"
+                />
                 <ErrorMsg error={errors.emailAddress} />
               </div>
               <div>
                 <FieldLabel>City / Town</FieldLabel>
-                <input {...register('cityTown')} className={getInputClass(errors.cityTown)} placeholder="e.g. Accra" />
+                <input
+                  {...register('cityTown')}
+                  className={getInputClass(errors.cityTown)}
+                  placeholder="e.g. Accra"
+                  autoComplete="address-level2"
+                />
                 <ErrorMsg error={errors.cityTown} />
               </div>
               <div className="md:col-span-2">
                 <FieldLabel>Residential Address</FieldLabel>
-                <input {...register('residentialAddress')} className={getInputClass(errors.residentialAddress)} placeholder="Enter your residential address" />
+                <input
+                  {...register('residentialAddress')}
+                  className={getInputClass(errors.residentialAddress)}
+                  placeholder="Enter your residential address"
+                  autoComplete="street-address"
+                />
                 <ErrorMsg error={errors.residentialAddress} />
               </div>
             </div>
@@ -366,7 +414,14 @@ export default function Register() {
               </div>
               <div className="md:col-span-2">
                 <FieldLabel optional>Years of Experience</FieldLabel>
-                <input {...register('yearsOfExperience')} className={getInputClass(errors.yearsOfExperience)} placeholder="e.g. 3" />
+                <input
+                  {...register('yearsOfExperience')}
+                  inputMode="numeric"
+                  maxLength={2}
+                  className={getInputClass(errors.yearsOfExperience)}
+                  placeholder="e.g. 3"
+                />
+                <ErrorMsg error={errors.yearsOfExperience} />
               </div>
             </div>
           </SectionCard>
@@ -489,7 +544,12 @@ export default function Register() {
             <div className="grid gap-5 md:grid-cols-2">
               <div className="md:col-span-2">
                 <FieldLabel>Name</FieldLabel>
-                <input {...register('emergencyName')} className={getInputClass(errors.emergencyName)} placeholder="Emergency contact full name" />
+                <input
+                  {...register('emergencyName')}
+                  className={getInputClass(errors.emergencyName)}
+                  placeholder="Emergency contact full name"
+                  autoComplete="name"
+                />
                 <ErrorMsg error={errors.emergencyName} />
               </div>
               <div>
@@ -499,7 +559,15 @@ export default function Register() {
               </div>
               <div>
                 <FieldLabel>Phone Number</FieldLabel>
-                <input {...register('emergencyPhone')} className={getInputClass(errors.emergencyPhone)} placeholder="e.g. 0241234567" />
+                <input
+                  {...register('emergencyPhone')}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={13}
+                  autoComplete="tel"
+                  className={getInputClass(errors.emergencyPhone)}
+                  placeholder="e.g. 0241234567 or +233241234567"
+                />
                 <ErrorMsg error={errors.emergencyPhone} />
               </div>
             </div>

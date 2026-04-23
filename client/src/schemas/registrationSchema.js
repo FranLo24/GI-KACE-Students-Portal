@@ -1,50 +1,92 @@
 import { z } from 'zod';
 
-const phoneRegex = /^\d{10,15}$/;
+const phoneRegex = /^(?:0|\+233)\d{9}$/;
+const textRegex = /^[A-Za-z][A-Za-z\s.'-]*$/;
+const idNumberRegex = /^[A-Za-z0-9/-]{8,13}$/;
+const experienceRegex = /^(?:[0-9]|[1-4][0-9]|50)$/;
+
+const requiredText = (message) => z.string().trim().min(1, message);
+const optionalTrimmedString = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().trim().optional(),
+);
 
 export const registrationSchema = z
   .object({
-    fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+    fullName: requiredText('Full name is required').regex(
+      textRegex,
+      'Full name can only include letters, spaces, apostrophes, periods, and hyphens',
+    ),
     gender: z.string().min(1, 'Please select a gender'),
-    nationality: z.string().min(1, 'Nationality is required'),
+    nationality: requiredText('Nationality is required').regex(
+      textRegex,
+      'Nationality can only include letters, spaces, apostrophes, periods, and hyphens',
+    ),
     idType: z.string().min(1, 'Please select an ID type'),
-    idTypeOther: z.string().optional(),
-    idNumber: z.string().min(1, 'ID number is required'),
+    idTypeOther: optionalTrimmedString,
+    idNumber: requiredText('ID number is required').regex(
+      idNumberRegex,
+      'ID number can only include letters, numbers, and hyphens and should be a minimum of 8 and a maximum of 13 characters',
+    ),
 
-    phoneNumber: z.string().regex(phoneRegex, 'Phone number must be 10–15 digits'),
-    alternativePhone: z.string().optional(),
-    emailAddress: z.string().email('Please enter a valid email address'),
-    residentialAddress: z.string().min(1, 'Residential address is required'),
-    cityTown: z.string().min(1, 'City/Town is required'),
+    phoneNumber: requiredText('Phone number is required').regex(
+      phoneRegex,
+      'Phone number must start with 0 or +233 and be followed by 9 digits',
+    ),
+    alternativePhone: optionalTrimmedString,
+    emailAddress: requiredText('Email address is required').email('Please enter a valid email address'),
+    residentialAddress: requiredText('Residential address is required').min(5, 'Residential address must be at least 5 characters'),
+    cityTown: requiredText('City/Town is required').regex(
+      textRegex,
+      'City/Town can only include letters, spaces, apostrophes, periods, and hyphens',
+    ),
 
     highestEducation: z.string().min(1, 'Please select your highest education level'),
-    highestEducationOther: z.string().optional(),
-    fieldOfStudy: z.string().min(1, 'Field of study is required'),
+    highestEducationOther: optionalTrimmedString,
+    fieldOfStudy: requiredText('Field of study is required').min(2, 'Field of study must be at least 2 characters'),
 
     employmentStatus: z.string().min(1, 'Please select employment status'),
-    organizationName: z.string().optional(),
-    jobTitle: z.string().optional(),
-    yearsOfExperience: z.string().optional(),
+    organizationName: optionalTrimmedString,
+    jobTitle: optionalTrimmedString,
+    yearsOfExperience: optionalTrimmedString,
 
-    courseTitle: z.string().min(1, 'Course title is required'),
+    courseTitle: requiredText('Course title is required').min(2, 'Course title must be at least 2 characters'),
     courseCategory: z.string().min(1, 'Please select a course category'),
-    courseCategoryOther: z.string().optional(),
+    courseCategoryOther: optionalTrimmedString,
 
     computerLiteracy: z.string().min(1, 'Please select your computer literacy level'),
-    relevantSkills: z.string().optional(),
+    relevantSkills: optionalTrimmedString,
 
-    emergencyName: z.string().min(1, 'Emergency contact name is required'),
-    emergencyRelationship: z.string().min(1, 'Relationship is required'),
-    emergencyPhone: z.string().regex(phoneRegex, 'Emergency phone must be 10–15 digits'),
+    emergencyName: requiredText('Emergency contact name is required').regex(
+      textRegex,
+      'Emergency contact name can only include letters, spaces, apostrophes, periods, and hyphens',
+    ),
+    emergencyRelationship: requiredText('Relationship is required').regex(
+      textRegex,
+      'Relationship can only include letters, spaces, apostrophes, periods, and hyphens',
+    ),
+    emergencyPhone: requiredText('Emergency phone is required').regex(
+      phoneRegex,
+      'Emergency phone must start with 0 or +233 and be followed by 9 digits',
+    ),
   })
   .superRefine((data, ctx) => {
     if (data.alternativePhone && !phoneRegex.test(data.alternativePhone)) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Alternative phone must be 10–15 digits',
+        message: 'Alternative phone must start with 0 or +233 and be followed by 9 digits',
         path: ['alternativePhone'],
       });
     }
+
+    if (data.yearsOfExperience && !experienceRegex.test(data.yearsOfExperience)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Years of experience must be a whole number from 0 to 50',
+        path: ['yearsOfExperience'],
+      });
+    }
+
     if (data.idType === 'Other' && !data.idTypeOther?.trim()) {
       ctx.addIssue({
         code: 'custom',
@@ -52,6 +94,7 @@ export const registrationSchema = z
         path: ['idTypeOther'],
       });
     }
+
     if (data.highestEducation === 'Other' && !data.highestEducationOther?.trim()) {
       ctx.addIssue({
         code: 'custom',
@@ -59,6 +102,7 @@ export const registrationSchema = z
         path: ['highestEducationOther'],
       });
     }
+
     if (data.courseCategory === 'Other' && !data.courseCategoryOther?.trim()) {
       ctx.addIssue({
         code: 'custom',
