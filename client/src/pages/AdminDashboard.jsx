@@ -468,8 +468,8 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-          <div className="grid gap-6">
+        <section className="mt-10 space-y-6">
+          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] xl:items-start">
             <div className="portal-panel p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
