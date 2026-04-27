@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Navbar from '../components/Navbar';
@@ -41,9 +41,9 @@ function ErrorMsg({ error }) {
   ) : null;
 }
 
-function SectionCard({ number, title, description, children }) {
+function SectionCard({ number, title, description, children, sectionRef }) {
   return (
-    <section className="portal-panel p-6 sm:p-8">
+    <section ref={sectionRef} className="portal-panel p-6 sm:p-8">
       <div className="mb-6 flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Section {number}</p>
@@ -76,6 +76,7 @@ export default function Register() {
   const [modal, setModal] = useState(null);
   const [pendingData, setPendingData] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const ictSkillsSectionRef = useRef(null);
 
   const {
     register,
@@ -160,10 +161,15 @@ export default function Register() {
     reset();
   };
 
+  const scrollToIctSkillsSection = () => {
+    ictSkillsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const selectCourse = (course) => {
     setValue('courseCategory', course.category, { shouldDirty: true, shouldValidate: true });
     setValue('courseTitle', course.title, { shouldDirty: true, shouldValidate: true });
     setValue('courseCategoryOther', '', { shouldDirty: true, shouldValidate: true });
+    window.requestAnimationFrame(scrollToIctSkillsSection);
   };
 
   const selectCustomCourse = () => {
@@ -443,20 +449,20 @@ export default function Register() {
                     className={[
                       'group overflow-hidden rounded-[24px] border text-left transition duration-300',
                       selected
-                        ? 'border-blue-300 bg-blue-50/80 shadow-[0_22px_70px_rgba(239,68,68,0.16)]'
+                        ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
                         : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                     ].join(' ')}
                   >
                     <img src={course.image} alt={course.title} className="h-48 w-full object-cover transition duration-500 group-hover:scale-105" />
                     <div className="space-y-3 p-5">
                       <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-lg font-semibold text-slate-900">{course.title}</h3>
+                        <h3 className={[selected ? 'text-white' : 'text-slate-900', 'text-lg font-semibold'].join(' ')}>{course.title}</h3>
                         {/* <span className="rounded-full bg-slate-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
                           {course.spotlight}
                         </span> */}
                       </div>
-                      <p className="text-sm text-slate-600">{course.description}</p>
-                      <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">{course.outcomes}</p>
+                      <p className={selected ? 'text-sm text-white/90' : 'text-sm text-slate-600'}>{course.description}</p>
+                      <p className={selected ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>{course.outcomes}</p>
                     </div>
                   </button>
                 );
@@ -468,18 +474,20 @@ export default function Register() {
                 className={[
                   'flex min-h-[320px] flex-col justify-between rounded-[24px] border p-6 text-left transition duration-300',
                   courseCategory === 'Other'
-                    ? 'border-blue-300 bg-gradient-to-br from-blue-50 to-blue-50 shadow-[0_22px_70px_rgba(239,68,68,0.16)]'
+                    ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
                     : 'border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                 ].join(' ')}
               >
                 <div>
-                  <span className="portal-kicker">Custom request</span>
-                  <h3 className="mt-4 text-2xl font-semibold text-slate-900">Other programme</h3>
-                  <p className="mt-3 text-sm text-slate-600">
+                  <span className={courseCategory === 'Other' ? 'inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white' : 'portal-kicker'}>
+                    Custom request
+                  </span>
+                  <h3 className={courseCategory === 'Other' ? 'mt-4 text-2xl font-semibold text-white' : 'mt-4 text-2xl font-semibold text-slate-900'}>Other programme</h3>
+                  <p className={courseCategory === 'Other' ? 'mt-3 text-sm text-white/90' : 'mt-3 text-sm text-slate-600'}>
                     Choose this if you want a custom or not-yet-listed training option.
                   </p>
                 </div>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">Flexible course selection</p>
+                <p className={courseCategory === 'Other' ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>Flexible course selection</p>
               </button>
             </div>
 
@@ -514,6 +522,7 @@ export default function Register() {
             number={6}
             title="ICT Skills & Experience"
             description="Let us know your computer literacy level and any practical experience relevant to the course."
+            sectionRef={ictSkillsSectionRef}
           >
             <div className="grid gap-5 md:grid-cols-2">
               <div className="md:col-span-2">

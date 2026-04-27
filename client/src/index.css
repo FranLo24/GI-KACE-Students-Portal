@@ -5,7 +5,7 @@
 :root {
   color-scheme: light;
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-  background: #3a28c7;
+  background: #3CB4FF;
   color: #422be4;
 }
 
@@ -16,10 +16,10 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(66, 43, 228, 0.2), transparent 28%),
-    radial-gradient(circle at top right, rgba(66, 43, 228, 0.2), transparent 26%),
-    linear-gradient(180deg, #fff7f7 0%, #f7f4ff 52%, #f3f8ff 100%);
+  background-color: #c2e4fa;
+  background-image:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.28), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 26%);
   color: #422be4;
 }
 
