@@ -493,20 +493,22 @@ export default function Register() {
 
             <ErrorMsg error={errors.courseCategory} />
 
-            <div className="mt-6 grid gap-5 md:grid-cols-2">
-              <div>
-                <FieldLabel>Course Title</FieldLabel>
-                <input {...register('courseTitle')} className={getInputClass(errors.courseTitle)} placeholder="Selected course title or a custom title" />
-                <ErrorMsg error={errors.courseTitle} />
-              </div>
+            {courseCategory === 'Other' ? (
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <div>
+                  <FieldLabel>Course Title</FieldLabel>
+                  <input {...register('courseTitle')} className={getInputClass(errors.courseTitle)} placeholder="Selected course title or a custom title" />
+                  <ErrorMsg error={errors.courseTitle} />
+                </div>
 
-              {courseCategory === 'Other' ? (
                 <div>
                   <FieldLabel>Course Category</FieldLabel>
                   <input {...register('courseCategoryOther')} className={getInputClass(errors.courseCategoryOther)} placeholder="Please specify the course category" />
                   <ErrorMsg error={errors.courseCategoryOther} />
                 </div>
-              ) : (
+              </div>
+            ) : (
+              <div className="mt-6">
                 <div className="portal-data-card flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Current selection</p>
@@ -514,8 +516,8 @@ export default function Register() {
                     <p className="mt-1 text-sm text-slate-500">{courseCategory || 'No category selected yet'}</p>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
