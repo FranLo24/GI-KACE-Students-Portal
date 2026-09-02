@@ -35,6 +35,10 @@ const FIELD_LABELS = {
   emergencyRelationship: 'Relationship',
   emergencyPhone: 'Emergency Phone',
   createdAt: 'Registered Date',
+  admissionStatus: 'Admission Status',
+  admittedAt: 'Admitted On',
+  admissionSmsStatus: 'Admission SMS',
+  admissionEmailStatus: 'Admission Email',
 };
 
 const SECTIONS = [
@@ -66,7 +70,35 @@ const SECTIONS = [
     title: 'Emergency Contact',
     fields: ['emergencyName', 'emergencyRelationship', 'emergencyPhone'],
   },
+  {
+    title: 'Admission',
+    fields: ['admissionStatus', 'admittedAt', 'admissionSmsStatus', 'admissionEmailStatus'],
+  },
 ];
+
+const ADMISSION_BADGE_STYLES = {
+  pending: 'bg-slate-100 text-slate-600',
+  admitted: 'bg-emerald-100 text-emerald-700',
+};
+
+function StatusBadge({ value, styles }) {
+  return (
+    <span
+      className={
+        'rounded-full px-3 py-1 text-xs font-semibold capitalize ' + (styles[value] || 'bg-slate-100 text-slate-600')
+      }
+    >
+      {value}
+    </span>
+  );
+}
+
+function formatFieldValue(field, value) {
+  if (field === 'createdAt' || field === 'admittedAt') {
+    return new Date(value).toLocaleDateString();
+  }
+  return value;
+}
 
 const EDUCATION_OPTIONS = [
   'Basic Education (Primary/JHS)',
@@ -148,7 +180,7 @@ function ViewModal({ student, onClose }) {
                           {FIELD_LABELS[field]}
                         </p>
                         <p className="mt-2 text-sm font-medium text-slate-700 break-words">
-                          {field === 'createdAt' ? new Date(value).toLocaleDateString() : value}
+                          {formatFieldValue(field, value)}
                         </p>
                       </div>
                     );
@@ -163,10 +195,13 @@ function ViewModal({ student, onClose }) {
   );
 }
 
-function EditModal({ student, onClose, onSaved, onUnauthorized }) {
+function EditModal({ student, onClose, onSaved, onUnauthorized, onRefresh }) {
   const [form, setForm] = useState({ ...student });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [admitLoading, setAdmitLoading] = useState(false);
+  const [admitResult, setAdmitResult] = useState(null);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -189,6 +224,26 @@ function EditModal({ student, onClose, onSaved, onUnauthorized }) {
       setError('Failed to save changes. Please try again.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAdmit() {
+    setAdmitLoading(true);
+    setAdmitResult(null);
+    try {
+      const res = await api.post('/admin/students/' + student.id + '/admit');
+      setForm((prev) => ({ ...prev, admissionStatus: 'admitted' }));
+      setAdmitResult({ ok: true, smsStatus: res.data.smsStatus, emailStatus: res.data.emailStatus });
+      onRefresh();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        onUnauthorized();
+        return;
+      }
+
+      setAdmitResult({ ok: false, message: error.response?.data?.message || 'Failed to admit student.' });
+    } finally {
+      setAdmitLoading(false);
     }
   }
 
@@ -317,6 +372,47 @@ function EditModal({ student, onClose, onSaved, onUnauthorized }) {
                 </div>
               </section>
 
+              <section className="portal-panel p-5">
+                <h3 className="text-lg font-semibold text-slate-900">Admission</h3>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">Admission Status</label>
+                    <p className="portal-input bg-slate-50 capitalize text-slate-600">{form.admissionStatus}</p>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={handleAdmit}
+                      disabled={form.admissionStatus === 'admitted' || admitLoading}
+                      className="portal-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {admitLoading
+                        ? 'Admitting…'
+                        : form.admissionStatus === 'admitted'
+                        ? 'Already Admitted'
+                        : 'Admit Student'}
+                    </button>
+                  </div>
+                </div>
+
+                {admitResult && (
+                  <div
+                    className={
+                      'mt-4 rounded-2xl border px-4 py-3 text-sm ' +
+                      (admitResult.ok && admitResult.smsStatus === 'sent' && admitResult.emailStatus === 'sent'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : admitResult.ok
+                        ? 'border-amber-200 bg-amber-50 text-amber-700'
+                        : 'border-red-200 bg-red-50 text-red-700')
+                    }
+                  >
+                    {admitResult.ok
+                      ? `Student admitted. SMS: ${admitResult.smsStatus}, Email: ${admitResult.emailStatus}.`
+                      : admitResult.message}
+                  </div>
+                )}
+              </section>
+
               {error && (
                 <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                   {error}
@@ -335,6 +431,116 @@ function EditModal({ student, onClose, onSaved, onUnauthorized }) {
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+const LEVEL_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
+
+function CourseLevelPanel() {
+  const [courseLevels, setCourseLevels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [savingCategory, setSavingCategory] = useState(null);
+  const [newCategory, setNewCategory] = useState('');
+  const [newLevel, setNewLevel] = useState('');
+
+  const fetchCourseLevels = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/course-levels');
+      setCourseLevels(res.data);
+    } catch {
+      // non-critical panel — fail silently, admin can retry by reloading
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCourseLevels();
+  }, [fetchCourseLevels]);
+
+  async function updateLevel(category, level) {
+    setSavingCategory(category);
+    try {
+      await api.put('/admin/course-levels/' + encodeURIComponent(category), { level: level || null });
+      await fetchCourseLevels();
+    } finally {
+      setSavingCategory(null);
+    }
+  }
+
+  async function handleAddCategory(e) {
+    e.preventDefault();
+    if (!newCategory.trim()) return;
+    await updateLevel(newCategory.trim(), newLevel);
+    setNewCategory('');
+    setNewLevel('');
+  }
+
+  return (
+    <div className="portal-panel p-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Course recommendations</p>
+      <h2 className="mt-2 text-xl font-semibold text-slate-900">Course Level Mapping</h2>
+      <p className="mt-2 text-sm text-slate-500">
+        Set which computer literacy level each course is recommended for. Students see the matching course
+        highlighted during registration.
+      </p>
+
+      <div className="mt-5 space-y-3">
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : (
+          courseLevels.map((entry) => (
+            <div
+              key={entry.category}
+              className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3"
+            >
+              <p className="text-sm font-medium text-slate-700">{entry.category}</p>
+              <select
+                value={entry.level || ''}
+                onChange={(e) => updateLevel(entry.category, e.target.value)}
+                disabled={savingCategory === entry.category}
+                className="portal-select w-44"
+              >
+                <option value="">Unset</option>
+                {LEVEL_OPTIONS.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))
+        )}
+      </div>
+
+      <form onSubmit={handleAddCategory} className="mt-5 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-5">
+        <div className="min-w-[180px] flex-1">
+          <label className="mb-2 block text-sm font-medium text-slate-700">New course category</label>
+          <input
+            type="text"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            placeholder="e.g. Cloud Computing"
+            className="portal-input"
+          />
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Level</label>
+          <select value={newLevel} onChange={(e) => setNewLevel(e.target.value)} className="portal-select w-44">
+            <option value="">Unset</option>
+            {LEVEL_OPTIONS.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="submit" className="portal-button-secondary">
+          Add
+        </button>
+      </form>
     </div>
   );
 }
@@ -516,6 +722,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          <CourseLevelPanel />
+
           <div className="portal-panel overflow-hidden">
             {fetchError && (
               <div className="border-b border-blue-100 bg-blue-50 px-6 py-4 text-sm text-blue-700">
@@ -532,6 +740,7 @@ export default function AdminDashboard() {
                     <th className="px-5 py-4 font-semibold">Email</th>
                     <th className="px-5 py-4 font-semibold">Phone</th>
                     <th className="px-5 py-4 font-semibold">Course Category</th>
+                    <th className="px-5 py-4 font-semibold">Admission</th>
                     <th className="px-5 py-4 font-semibold">Registered</th>
                     <th className="px-5 py-4 font-semibold">Actions</th>
                   </tr>
@@ -539,11 +748,11 @@ export default function AdminDashboard() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-5 py-10 text-center text-slate-500">Loading…</td>
+                      <td colSpan={8} className="px-5 py-10 text-center text-slate-500">Loading…</td>
                     </tr>
                   ) : paginated.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-5 py-10 text-center text-slate-500">
+                      <td colSpan={8} className="px-5 py-10 text-center text-slate-500">
                         {searchInput ? 'No students match your search.' : 'No students registered yet.'}
                       </td>
                     </tr>
@@ -555,6 +764,9 @@ export default function AdminDashboard() {
                         <td className="px-5 py-4 text-slate-600">{student.emailAddress}</td>
                         <td className="px-5 py-4 text-slate-600">{student.phoneNumber}</td>
                         <td className="px-5 py-4 text-slate-600">{student.courseCategory}</td>
+                        <td className="px-5 py-4">
+                          <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} />
+                        </td>
                         <td className="px-5 py-4 text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</td>
                         <td className="px-5 py-4">
                           <div className="flex flex-wrap gap-2">
@@ -628,6 +840,7 @@ export default function AdminDashboard() {
           onClose={() => setEditStudent(null)}
           onSaved={handleEditSaved}
           onUnauthorized={handleUnauthorizedAccess}
+          onRefresh={() => fetchStudents(debouncedSearch)}
         />
       )}
 

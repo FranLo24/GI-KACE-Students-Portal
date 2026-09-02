@@ -45,6 +45,11 @@ model Student {
   emergencyRelationship String
   emergencyPhone        String
 
+  admissionStatus       String   @default("pending")
+  admittedAt            DateTime?
+  admissionSmsStatus    String?
+  admissionEmailStatus  String?
+
   @@map("students")
 }
 
@@ -54,4 +59,13 @@ model Admin {
   passwordHash String
 
   @@map("admins")
+}
+
+model CourseLevel {
+  id        Int      @id @default(autoincrement())
+  category  String   @unique
+  level     String?
+  updatedAt DateTime @updatedAt
+
+  @@map("course_levels")
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Navbar from '../components/Navbar';
@@ -76,7 +76,16 @@ export default function Register() {
   const [modal, setModal] = useState(null);
   const [pendingData, setPendingData] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [courseLevels, setCourseLevels] = useState([]);
   const ictSkillsSectionRef = useRef(null);
+  const emergencyContactSectionRef = useRef(null);
+
+  useEffect(() => {
+    api
+      .get('/course-levels')
+      .then((res) => setCourseLevels(res.data))
+      .catch(() => {});
+  }, []);
 
   const {
     register,
@@ -129,6 +138,9 @@ export default function Register() {
   const courseTitle = useWatch({ control, name: 'courseTitle' });
   const computerLiteracy = useWatch({ control, name: 'computerLiteracy' });
 
+  const levelByCategory = new Map(courseLevels.map((entry) => [entry.category, entry.level]));
+  const visibleCourses = featuredCourses.filter((course) => levelByCategory.get(course.category) === computerLiteracy);
+
   const onSubmit = (data) => {
     clearErrors(['emailAddress', 'phoneNumber']);
     setPendingData(data);
@@ -165,11 +177,15 @@ export default function Register() {
     ictSkillsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const scrollToEmergencyContactSection = () => {
+    emergencyContactSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const selectCourse = (course) => {
     setValue('courseCategory', course.category, { shouldDirty: true, shouldValidate: true });
     setValue('courseTitle', course.title, { shouldDirty: true, shouldValidate: true });
     setValue('courseCategoryOther', '', { shouldDirty: true, shouldValidate: true });
-    window.requestAnimationFrame(scrollToIctSkillsSection);
+    window.requestAnimationFrame(scrollToEmergencyContactSection);
   };
 
   const selectCustomCourse = () => {
@@ -434,96 +450,8 @@ export default function Register() {
 
           <SectionCard
             number={5}
-            title="Course Details"
-            description="Choose the programme you want to study, then confirm the exact course title for your application."
-          >
-            <input type="hidden" {...register('courseCategory')} />
-            <div className="grid gap-5 xl:grid-cols-3">
-              {featuredCourses.map((course) => {
-                const selected = courseCategory === course.category;
-                return (
-                  <button
-                    key={course.title}
-                    type="button"
-                    onClick={() => selectCourse(course)}
-                    className={[
-                      'group overflow-hidden rounded-[24px] border text-left transition duration-300',
-                      selected
-                        ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
-                        : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
-                    ].join(' ')}
-                  >
-                    <img src={course.image} alt={course.title} className="h-48 w-full object-cover transition duration-500 group-hover:scale-105" />
-                    <div className="space-y-3 p-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className={[selected ? 'text-white' : 'text-slate-900', 'text-lg font-semibold'].join(' ')}>{course.title}</h3>
-                        {/* <span className="rounded-full bg-slate-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
-                          {course.spotlight}
-                        </span> */}
-                      </div>
-                      <p className={selected ? 'text-sm text-white/90' : 'text-sm text-slate-600'}>{course.description}</p>
-                      <p className={selected ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>{course.outcomes}</p>
-                    </div>
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={selectCustomCourse}
-                className={[
-                  'flex min-h-[320px] flex-col justify-between rounded-[24px] border p-6 text-left transition duration-300',
-                  courseCategory === 'Other'
-                    ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
-                    : 'border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
-                ].join(' ')}
-              >
-                <div>
-                  <span className={courseCategory === 'Other' ? 'inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white' : 'portal-kicker'}>
-                    Custom request
-                  </span>
-                  <h3 className={courseCategory === 'Other' ? 'mt-4 text-2xl font-semibold text-white' : 'mt-4 text-2xl font-semibold text-slate-900'}>Other programme</h3>
-                  <p className={courseCategory === 'Other' ? 'mt-3 text-sm text-white/90' : 'mt-3 text-sm text-slate-600'}>
-                    Choose this if you want a custom or not-yet-listed training option.
-                  </p>
-                </div>
-                <p className={courseCategory === 'Other' ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>Flexible course selection</p>
-              </button>
-            </div>
-
-            <ErrorMsg error={errors.courseCategory} />
-
-            {courseCategory === 'Other' ? (
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <div>
-                  <FieldLabel>Course Title</FieldLabel>
-                  <input {...register('courseTitle')} className={getInputClass(errors.courseTitle)} placeholder="Selected course title or a custom title" />
-                  <ErrorMsg error={errors.courseTitle} />
-                </div>
-
-                <div>
-                  <FieldLabel>Course Category</FieldLabel>
-                  <input {...register('courseCategoryOther')} className={getInputClass(errors.courseCategoryOther)} placeholder="Please specify the course category" />
-                  <ErrorMsg error={errors.courseCategoryOther} />
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6">
-                <div className="portal-data-card flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Current selection</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{courseTitle || 'Choose a course card'}</p>
-                    <p className="mt-1 text-sm text-slate-500">{courseCategory || 'No category selected yet'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            number={6}
             title="ICT Skills & Experience"
-            description="Let us know your computer literacy level and any practical experience relevant to the course."
+            description="Let us know your computer literacy level and any practical experience relevant to the course. We'll use this to recommend a course in the next section."
             sectionRef={ictSkillsSectionRef}
           >
             <div className="grid gap-5 md:grid-cols-2">
@@ -548,9 +476,120 @@ export default function Register() {
           </SectionCard>
 
           <SectionCard
+            number={6}
+            title="Course Details"
+            description="Choose the programme you want to study, then confirm the exact course title for your application."
+          >
+            <input type="hidden" {...register('courseCategory')} />
+
+            {!computerLiteracy ? (
+              <div className="portal-data-card flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Level required</p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Select your computer literacy level in the ICT Skills &amp; Experience section above to see courses for that level.
+                  </p>
+                </div>
+                <button type="button" onClick={scrollToIctSkillsSection} className="portal-button-secondary shrink-0">
+                  Go to ICT Skills
+                </button>
+              </div>
+            ) : (
+              <>
+                {visibleCourses.length === 0 ? (
+                  <div className="portal-data-card mb-5">
+                    <p className="text-sm text-slate-600">
+                      No courses are currently listed for the <strong>{computerLiteracy}</strong> level. You can still choose a custom programme below.
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-5 xl:grid-cols-3">
+                  {visibleCourses.map((course) => {
+                    const selected = courseCategory === course.category;
+                    return (
+                      <button
+                        key={course.title}
+                        type="button"
+                        onClick={() => selectCourse(course)}
+                        className={[
+                          'group relative overflow-hidden rounded-[24px] border text-left transition duration-300',
+                          selected
+                            ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
+                            : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
+                        ].join(' ')}
+                      >
+                        <img src={course.image} alt={course.title} className="h-48 w-full object-cover transition duration-500 group-hover:scale-105" />
+                        <div className="space-y-3 p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <h3 className={[selected ? 'text-white' : 'text-slate-900', 'text-lg font-semibold'].join(' ')}>{course.title}</h3>
+                          </div>
+                          <p className={selected ? 'text-sm text-white/90' : 'text-sm text-slate-600'}>{course.description}</p>
+                          <p className={selected ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>{course.outcomes}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={selectCustomCourse}
+                    className={[
+                      'flex min-h-[320px] flex-col justify-between rounded-[24px] border p-6 text-left transition duration-300',
+                      courseCategory === 'Other'
+                        ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
+                        : 'border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
+                    ].join(' ')}
+                  >
+                    <div>
+                      <span className={courseCategory === 'Other' ? 'inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white' : 'portal-kicker'}>
+                        Custom request
+                      </span>
+                      <h3 className={courseCategory === 'Other' ? 'mt-4 text-2xl font-semibold text-white' : 'mt-4 text-2xl font-semibold text-slate-900'}>Other programme</h3>
+                      <p className={courseCategory === 'Other' ? 'mt-3 text-sm text-white/90' : 'mt-3 text-sm text-slate-600'}>
+                        Choose this if you want a custom or not-yet-listed training option.
+                      </p>
+                    </div>
+                    <p className={courseCategory === 'Other' ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>Flexible course selection</p>
+                  </button>
+                </div>
+
+                <ErrorMsg error={errors.courseCategory} />
+
+                {courseCategory === 'Other' ? (
+                  <div className="mt-6 grid gap-5 md:grid-cols-2">
+                    <div>
+                      <FieldLabel>Course Title</FieldLabel>
+                      <input {...register('courseTitle')} className={getInputClass(errors.courseTitle)} placeholder="Selected course title or a custom title" />
+                      <ErrorMsg error={errors.courseTitle} />
+                    </div>
+
+                    <div>
+                      <FieldLabel>Course Category</FieldLabel>
+                      <input {...register('courseCategoryOther')} className={getInputClass(errors.courseCategoryOther)} placeholder="Please specify the course category" />
+                      <ErrorMsg error={errors.courseCategoryOther} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <div className="portal-data-card flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Current selection</p>
+                        <p className="mt-2 text-lg font-semibold text-slate-900">{courseTitle || 'Choose a course card'}</p>
+                        <p className="mt-1 text-sm text-slate-500">{courseCategory || 'No category selected yet'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </SectionCard>
+
+          <SectionCard
             number={7}
             title="Emergency Contact"
             description="Add a reliable contact person we can reach in case of an urgent follow-up."
+            sectionRef={emergencyContactSectionRef}
           >
             <div className="grid gap-5 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -612,7 +651,7 @@ export default function Register() {
       {modal?.type === 'success' ? (
         <Modal
           title="Registration Successful!"
-          message={'Welcome, ' + modal.name + '! Your registration has been submitted successfully. We will be in touch with further details.'}
+          message={'Welcome, ' + modal.name + '! Your registration has been submitted successfully. Our admissions team will review it and contact you about admission.'}
           onClose={handleSuccessClose}
         />
       ) : null}
