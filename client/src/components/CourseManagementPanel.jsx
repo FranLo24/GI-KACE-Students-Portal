@@ -71,7 +71,7 @@ function CourseForm({ initial, onSubmit, onCancel, submitLabel }) {
           value={form.fee}
           onChange={(e) => update('fee', e.target.value)}
           className="portal-input"
-          placeholder="Leave blank to show 'Contact us for pricing'"
+          placeholder="Leave blank to show ''"
         />
       </div>
       <div>
