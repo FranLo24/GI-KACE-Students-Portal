@@ -4,7 +4,8 @@
 
 :root {
   color-scheme: light;
-  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --portal-font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  font-family: var(--portal-font-family);
   background: #3CB4FF;
   color: #422be4;
 }

@@ -3,9 +3,13 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import portalHero from '../assets/portal-hero.png';
 import registerHero from '../assets/register-hero.png';
-import { featuredCourses, portalStats } from '../data/courseCatalog';
+import { portalStats } from '../data/courseCatalog';
+import { useCourses } from '../hooks/useCourses';
+import { formatFee } from '../utils/currency';
 
 export default function Home() {
+  const { courses: featuredCourses } = useCourses();
+
   return (
     <div className="portal-shell flex min-h-screen flex-col">
       <Navbar />
@@ -102,11 +106,13 @@ export default function Home() {
                 style={{ animationDelay: index * 90 + 'ms' }}
               >
                 <div className="relative overflow-hidden">
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className="h-52 w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
+                  {course.imageUrl && (
+                    <img
+                      src={course.imageUrl}
+                      alt={course.title}
+                      className="h-52 w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  )}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent px-5 pb-4 pt-16">
                     {/* <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-200">
                       {course.spotlight}
@@ -115,7 +121,10 @@ export default function Home() {
                 </div>
                 <div className="portal-course-card-body">
                   <div className="portal-course-card-copy">
-                    <h3 className="text-xl font-semibold text-slate-900">{course.title}</h3>
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-xl font-semibold text-slate-900">{course.title}</h3>
+                      <p className="shrink-0 text-sm font-semibold text-blue-700">{formatFee(course.fee)}</p>
+                    </div>
                     <p className="mt-2 text-sm text-slate-600">{course.description}</p>
                   </div>
                   {/* <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">

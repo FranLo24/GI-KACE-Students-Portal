@@ -20,7 +20,7 @@ export default function AdminLogin() {
     try {
       const res = await api.post('/admin/login', { username, password });
       login(res.data.token);
-      navigate('/secure-access/dashboard');
+      navigate('/admin/dashboard');
     } catch (err) {
       if (err.response?.status === 401) {
         setError('Invalid username or password.');
