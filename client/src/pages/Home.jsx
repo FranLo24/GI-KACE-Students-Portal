@@ -5,7 +5,7 @@ import portalHero from '../assets/portal-hero.png';
 import registerHero from '../assets/register-hero.png';
 import { portalStats } from '../data/courseCatalog';
 import { useCourses } from '../hooks/useCourses';
-import { formatFee } from '../utils/currency';
+import CourseFeeList from '../components/CourseFeeList';
 
 export default function Home() {
   const { courses: featuredCourses } = useCourses();
@@ -121,11 +121,11 @@ export default function Home() {
                 </div>
                 <div className="portal-course-card-body">
                   <div className="portal-course-card-copy">
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-xl font-semibold text-slate-900">{course.title}</h3>
-                      <p className="shrink-0 text-sm font-semibold text-blue-700">{formatFee(course.fee)}</p>
-                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900">{course.title}</h3>
                     <p className="mt-2 text-sm text-slate-600">{course.description}</p>
+                    <div className="mt-3">
+                      <CourseFeeList fees={course.locationFees} />
+                    </div>
                   </div>
                   {/* <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">
                     {course.outcomes}

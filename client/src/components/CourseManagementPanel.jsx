@@ -3,6 +3,7 @@ import Modal from './Modal';
 import api from '../api/axios';
 import { formatFee } from '../utils/currency';
 import { useUnauthorizedRedirect } from '../hooks/useUnauthorizedRedirect';
+import { useCourseLocations } from '../hooks/useCourseLocations';
 
 const EMPTY_FORM = {
   title: '',
@@ -10,7 +11,6 @@ const EMPTY_FORM = {
   description: '',
   outcomes: '',
   spotlight: '',
-  fee: '',
   imageUrl: '',
 };
 
@@ -48,7 +48,6 @@ function CourseForm({ initial, onSubmit, onCancel, submitLabel }) {
       outcomes: form.outcomes || undefined,
       spotlight: form.spotlight || undefined,
       imageUrl: form.imageUrl || undefined,
-      fee: form.fee === '' ? null : Number(form.fee),
     });
   }
 
@@ -61,18 +60,6 @@ function CourseForm({ initial, onSubmit, onCancel, submitLabel }) {
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">Category</label>
         <input value={form.category} onChange={(e) => update('category', e.target.value)} required className="portal-input" />
-      </div>
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Fee (GHS)</label>
-        <input
-          type="number"
-          min={0}
-          step="0.01"
-          value={form.fee}
-          onChange={(e) => update('fee', e.target.value)}
-          className="portal-input"
-          placeholder="Leave blank to show ''"
-        />
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">Spotlight tag</label>
@@ -110,7 +97,95 @@ function CourseForm({ initial, onSubmit, onCancel, submitLabel }) {
   );
 }
 
-function CourseRow({ course, index, courseCount, onMove, onToggleEnabled, onEdit, onDelete, editing, onStartEdit, onCancelEdit }) {
+function locationFeesSummary(locationFees) {
+  if (!locationFees || locationFees.length === 0) return 'No fees set';
+  return locationFees.map((entry) => `${entry.location} ${formatFee(entry.fee)}`).join(' · ');
+}
+
+function LocationFeesEditor({ course, onSave, onCancel }) {
+  const knownLocations = useCourseLocations();
+  const existingLocations = (course.locationFees || []).map((entry) => entry.location);
+  const locations = Array.from(new Set([...knownLocations, ...existingLocations]));
+
+  const initialValues = Object.fromEntries(
+    locations.map((location) => {
+      const match = (course.locationFees || []).find((entry) => entry.location === location);
+      return [location, match ? String(match.fee) : ''];
+    })
+  );
+
+  const [values, setValues] = useState(initialValues);
+  const [saving, setSaving] = useState(false);
+
+  function update(location, value) {
+    setValues((prev) => ({ ...prev, [location]: value }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const fees = Object.fromEntries(
+      Object.entries(values).map(([location, value]) => [location, value === '' ? null : Number(value)])
+    );
+    await onSave(fees);
+    setSaving(false);
+  }
+
+  if (locations.length === 0) {
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-500">
+        No centre locations are configured yet. Add options to the "Center Location" field in the form builder first.
+        <div className="mt-3">
+          <button type="button" onClick={onCancel} className="portal-button-secondary px-3 py-1.5 text-xs">
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 sm:grid-cols-2">
+      {locations.map((location) => (
+        <div key={location}>
+          <label className="mb-1 block text-xs font-medium text-slate-600">{location} fee (GHS)</label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={values[location]}
+            onChange={(e) => update(location, e.target.value)}
+            className="portal-input"
+            placeholder="Leave blank for no price"
+          />
+        </div>
+      ))}
+      <div className="flex gap-2 sm:col-span-2">
+        <button type="button" onClick={handleSave} disabled={saving} className="portal-button-primary px-4 py-2 text-xs">
+          {saving ? 'Saving…' : 'Save fees'}
+        </button>
+        <button type="button" onClick={onCancel} className="portal-button-secondary px-4 py-2 text-xs">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CourseRow({
+  course,
+  index,
+  courseCount,
+  onMove,
+  onToggleEnabled,
+  onEdit,
+  onDelete,
+  onSaveFees,
+  editing,
+  onStartEdit,
+  onCancelEdit,
+}) {
+  const [showFees, setShowFees] = useState(false);
+
   if (editing) {
     return (
       <CourseForm
@@ -120,7 +195,6 @@ function CourseRow({ course, index, courseCount, onMove, onToggleEnabled, onEdit
           description: course.description || '',
           outcomes: course.outcomes || '',
           spotlight: course.spotlight || '',
-          fee: course.fee ?? '',
           imageUrl: course.imageUrl || '',
         }}
         submitLabel="Save course"
@@ -131,55 +205,74 @@ function CourseRow({ course, index, courseCount, onMove, onToggleEnabled, onEdit
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3">
-      <div className="flex flex-col gap-1">
-        <button
-          type="button"
-          onClick={() => onMove(index, -1)}
-          disabled={index === 0}
-          className="text-xs text-slate-400 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          ▲
+    <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => onMove(index, -1)}
+            disabled={index === 0}
+            className="text-xs text-slate-400 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(index, 1)}
+            disabled={index === courseCount - 1}
+            className="text-xs text-slate-400 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▼
+          </button>
+        </div>
+
+        {course.imageUrl ? (
+          <img src={course.imageUrl} alt={course.title} className="h-14 w-20 rounded-xl object-cover" />
+        ) : (
+          <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-slate-100 text-[10px] text-slate-400">No image</div>
+        )}
+
+        <div className="min-w-[160px] flex-1">
+          <p className="text-sm font-semibold text-slate-900">{course.title}</p>
+          <p className="text-xs text-slate-400">{course.category}</p>
+        </div>
+
+        <p className="min-w-[160px] text-xs font-medium text-slate-600">{locationFeesSummary(course.locationFees)}</p>
+
+        <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+          <input type="checkbox" checked={course.enabled} onChange={(e) => onToggleEnabled(course, e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+          Shown on site
+        </label>
+
+        <button type="button" onClick={() => setShowFees((prev) => !prev)} className="portal-button-secondary px-3 py-1.5 text-xs">
+          {showFees ? 'Hide fees' : 'Location fees'}
         </button>
+
+        <button type="button" onClick={() => onStartEdit(course.id)} className="portal-button-secondary px-3 py-1.5 text-xs">
+          Edit
+        </button>
+
         <button
           type="button"
-          onClick={() => onMove(index, 1)}
-          disabled={index === courseCount - 1}
-          className="text-xs text-slate-400 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-30"
+          onClick={() => onDelete(course)}
+          className="portal-button-secondary bg-red-50 text-red-700 hover:border-red-200 hover:bg-red-100 px-3 py-1.5 text-xs"
         >
-          ▼
+          Delete
         </button>
       </div>
 
-      {course.imageUrl ? (
-        <img src={course.imageUrl} alt={course.title} className="h-14 w-20 rounded-xl object-cover" />
-      ) : (
-        <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-slate-100 text-[10px] text-slate-400">No image</div>
+      {showFees && (
+        <div className="mt-3">
+          <LocationFeesEditor
+            course={course}
+            onCancel={() => setShowFees(false)}
+            onSave={async (fees) => {
+              await onSaveFees(course.id, fees);
+              setShowFees(false);
+            }}
+          />
+        </div>
       )}
-
-      <div className="min-w-[160px] flex-1">
-        <p className="text-sm font-semibold text-slate-900">{course.title}</p>
-        <p className="text-xs text-slate-400">{course.category}</p>
-      </div>
-
-      <p className="min-w-[110px] text-sm font-medium text-slate-700">{formatFee(course.fee)}</p>
-
-      <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-        <input type="checkbox" checked={course.enabled} onChange={(e) => onToggleEnabled(course, e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
-        Shown on site
-      </label>
-
-      <button type="button" onClick={() => onStartEdit(course.id)} className="portal-button-secondary px-3 py-1.5 text-xs">
-        Edit
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onDelete(course)}
-        className="portal-button-secondary bg-red-50 text-red-700 hover:border-red-200 hover:bg-red-100 px-3 py-1.5 text-xs"
-      >
-        Delete
-      </button>
     </div>
   );
 }
@@ -251,6 +344,13 @@ export default function CourseManagementPanel() {
     }, 'Failed to update course.');
   }
 
+  async function saveFees(id, fees) {
+    await guarded(async () => {
+      await api.put('/admin/courses/' + id + '/fees', { fees });
+      await fetchCourses();
+    }, 'Failed to update course fees.');
+  }
+
   async function moveCourse(index, direction) {
     const target = index + direction;
     if (target < 0 || target >= courses.length) return;
@@ -315,6 +415,7 @@ export default function CourseManagementPanel() {
               onToggleEnabled={toggleEnabled}
               onEdit={updateCourse}
               onDelete={setConfirmDelete}
+              onSaveFees={saveFees}
             />
           ))
         )}

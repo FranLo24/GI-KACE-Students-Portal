@@ -7,6 +7,7 @@ const getPublicCourses = async (req, res) => {
     const courses = await prisma.course.findMany({
       where: { enabled: true },
       orderBy: { order: 'asc' },
+      include: { locationFees: true },
     });
     res.json(courses);
   } catch (error) {
@@ -17,7 +18,10 @@ const getPublicCourses = async (req, res) => {
 
 const getAdminCourses = async (req, res) => {
   try {
-    const courses = await prisma.course.findMany({ orderBy: { order: 'asc' } });
+    const courses = await prisma.course.findMany({
+      orderBy: { order: 'asc' },
+      include: { locationFees: true },
+    });
     res.json(courses);
   } catch (error) {
     console.error('Get admin courses error:', error);
@@ -26,7 +30,7 @@ const getAdminCourses = async (req, res) => {
 };
 
 const createCourse = async (req, res) => {
-  const { title, category, description, outcomes, spotlight, imageUrl, fee } = req.body;
+  const { title, category, description, outcomes, spotlight, imageUrl } = req.body;
 
   if (!title?.trim() || !category?.trim()) {
     return res.status(400).json({ message: 'title and category are required' });
@@ -43,9 +47,9 @@ const createCourse = async (req, res) => {
         outcomes: outcomes?.trim() || null,
         spotlight: spotlight?.trim() || null,
         imageUrl: imageUrl || null,
-        fee: fee === undefined || fee === null || fee === '' ? null : Number(fee),
         order: (maxOrder._max.order ?? -1) + 1,
       },
+      include: { locationFees: true },
     });
     res.status(201).json({ message: 'Course created', course });
   } catch (error) {
@@ -58,7 +62,7 @@ const updateCourse = async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ message: 'Invalid course ID' });
 
-  const { title, category, description, outcomes, spotlight, imageUrl, fee, enabled } = req.body;
+  const { title, category, description, outcomes, spotlight, imageUrl, enabled } = req.body;
 
   try {
     const course = await prisma.course.update({
@@ -70,9 +74,9 @@ const updateCourse = async (req, res) => {
         ...(outcomes !== undefined ? { outcomes: outcomes?.trim() || null } : {}),
         ...(spotlight !== undefined ? { spotlight: spotlight?.trim() || null } : {}),
         ...(imageUrl !== undefined ? { imageUrl: imageUrl || null } : {}),
-        ...(fee !== undefined ? { fee: fee === null || fee === '' ? null : Number(fee) } : {}),
         ...(enabled !== undefined ? { enabled: Boolean(enabled) } : {}),
       },
+      include: { locationFees: true },
     });
     res.json({ message: 'Course updated', course });
   } catch (error) {
@@ -111,6 +115,39 @@ const reorderCourses = async (req, res) => {
   }
 };
 
+const setCourseFees = async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ message: 'Invalid course ID' });
+
+  const { fees } = req.body;
+  if (typeof fees !== 'object' || fees === null || Array.isArray(fees)) {
+    return res.status(400).json({ message: 'fees must be an object mapping location to fee' });
+  }
+
+  try {
+    const course = await prisma.course.findUnique({ where: { id } });
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+
+    await prisma.$transaction(
+      Object.entries(fees).map(([location, fee]) =>
+        fee === null || fee === ''
+          ? prisma.courseFee.deleteMany({ where: { courseId: id, location } })
+          : prisma.courseFee.upsert({
+              where: { courseId_location: { courseId: id, location } },
+              update: { fee: Number(fee) },
+              create: { courseId: id, location, fee: Number(fee) },
+            })
+      )
+    );
+
+    const updated = await prisma.course.findUnique({ where: { id }, include: { locationFees: true } });
+    res.json({ message: 'Course fees updated', course: updated });
+  } catch (error) {
+    console.error('Set course fees error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getPublicCourses,
   getAdminCourses,
@@ -118,4 +155,5 @@ module.exports = {
   updateCourse,
   deleteCourse,
   reorderCourses,
+  setCourseFees,
 };

@@ -113,7 +113,6 @@ async function main() {
         description,
         outcomes,
         imageUrl,
-        fee: null,
         order: index,
         enabled: true,
       },

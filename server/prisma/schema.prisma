@@ -121,17 +121,29 @@ model FormSettings {
 }
 
 model Course {
-  id          Int      @id @default(autoincrement())
-  title       String
-  category    String
-  description String?
-  outcomes    String?
-  spotlight   String?
-  imageUrl    String?
-  fee         Float?
-  order       Int      @default(0)
-  enabled     Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
+  id           Int         @id @default(autoincrement())
+  title        String
+  category     String
+  description  String?
+  outcomes     String?
+  spotlight    String?
+  imageUrl     String?
+  order        Int         @default(0)
+  enabled      Boolean     @default(true)
+  updatedAt    DateTime    @updatedAt
+  locationFees CourseFee[]
 
   @@map("courses")
+}
+
+model CourseFee {
+  id        Int      @id @default(autoincrement())
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  location  String
+  fee       Float
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, location])
+  @@map("course_fees")
 }

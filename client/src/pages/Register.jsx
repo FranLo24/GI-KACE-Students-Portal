@@ -4,10 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Modal from '../components/Modal';
+import CourseFeeList from '../components/CourseFeeList';
 import api from '../api/axios';
 import { buildZodSchema, getDefaultValues, isFieldVisible, sortByOrder } from '../utils/dynamicForm';
 import { useCourses } from '../hooks/useCourses';
-import { formatFee } from '../utils/currency';
 import registerHero from '../assets/register-hero.png';
 
 function FieldLabel({ children, optional = false }) {
@@ -190,6 +190,7 @@ function RegistrationForm({ sections, headingScale }) {
   const computerLiteracy = values.computerLiteracy;
   const courseCategory = values.courseCategory;
   const courseTitle = values.courseTitle;
+  const centerLocation = values['center-location'];
 
   const levelByCategory = new Map(courseLevels.map((entry) => [entry.category, entry.level]));
   const visibleCourses = featuredCourses.filter((course) => levelByCategory.get(course.category) === computerLiteracy);
@@ -318,10 +319,12 @@ function RegistrationForm({ sections, headingScale }) {
                                 <h3 className={[selected ? 'text-white' : 'text-slate-900', 'text-lg font-semibold'].join(' ')}>{course.title}</h3>
                               </div>
                               <p className={selected ? 'text-sm text-white/90' : 'text-sm text-slate-600'}>{course.description}</p>
-                              <div className="flex items-center justify-between gap-3">
-                                <p className={selected ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>{course.outcomes}</p>
-                                <p className={selected ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-slate-900'}>{formatFee(course.fee)}</p>
-                              </div>
+                              <p className={selected ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>{course.outcomes}</p>
+                              <CourseFeeList
+                                fees={course.locationFees}
+                                selectedLocation={centerLocation}
+                                variant={selected ? 'dark' : 'light'}
+                              />
                             </div>
                           </button>
                         );
