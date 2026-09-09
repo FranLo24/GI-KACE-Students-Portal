@@ -216,7 +216,8 @@ const registerStudent = async (req, res) => {
 };
 
 const getAllStudents = async (req, res) => {
-  const { q, admissionStatus, attendanceStatus, courseCompletionStatus, courseCategory, computerLiteracy } = req.query;
+  const { q, admissionStatus, attendanceStatus, courseCompletionStatus, courseCategory, computerLiteracy, location } =
+    req.query;
 
   const where = {};
 
@@ -234,6 +235,7 @@ const getAllStudents = async (req, res) => {
   if (courseCompletionStatus) where.courseCompletionStatus = courseCompletionStatus;
   if (courseCategory) where.courseCategory = courseCategory;
   if (computerLiteracy) where.computerLiteracy = computerLiteracy;
+  if (location) where.customFields = { path: ['center-location'], equals: location };
 
   try {
     const students = await prisma.student.findMany({

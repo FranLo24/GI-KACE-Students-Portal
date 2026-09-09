@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Modal from '../components/Modal';
 import api from '../api/axios';
 import { useCourses } from '../hooks/useCourses';
+import { useCourseLocations } from '../hooks/useCourseLocations';
 import { isFieldVisible, sortByOrder } from '../utils/dynamicForm';
 import { useUnauthorizedRedirect } from '../hooks/useUnauthorizedRedirect';
 
@@ -43,7 +45,8 @@ function StatusBadge({ value, styles }) {
   return (
     <span
       className={
-        'rounded-full px-3 py-1 text-xs font-semibold capitalize ' + (styles[value] || 'bg-slate-100 text-slate-600')
+        'whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold capitalize ' +
+        (styles[value] || 'bg-slate-100 text-slate-600')
       }
     >
       {String(value).replace(/_/g, ' ')}
@@ -69,6 +72,7 @@ const EMPTY_FILTERS = {
   courseCompletionStatus: '',
   courseCategory: '',
   computerLiteracy: '',
+  location: '',
 };
 
 function useDebounce(value, delay) {
@@ -398,9 +402,109 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
   );
 }
 
+function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, onView, onEdit, onDelete }) {
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
+  const [position, setPosition] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    setPosition({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+
+    function handleClickOutside(e) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target)
+      ) {
+        onClose();
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', onClose, true);
+    window.addEventListener('resize', onClose);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', onClose, true);
+      window.removeEventListener('resize', onClose);
+    };
+  }, [isOpen, onClose]);
+
+  function run(action) {
+    action();
+    onClose();
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={onToggle}
+        className="portal-button-secondary inline-flex items-center gap-1.5 px-4 py-2 text-xs"
+      >
+        Actions
+        <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+
+      {isOpen &&
+        position &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ position: 'fixed', top: position.top, right: position.right }}
+            className="z-50 w-40 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl"
+          >
+            <button
+              type="button"
+              onClick={() => run(onAdmit)}
+              disabled={student.admissionStatus === 'admitted' || admitting}
+              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {admitting ? 'Admitting…' : student.admissionStatus === 'admitted' ? 'Admitted' : 'Admit'}
+            </button>
+            <button
+              type="button"
+              onClick={() => run(onView)}
+              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              View
+            </button>
+            <button
+              type="button"
+              onClick={() => run(onEdit)}
+              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-blue-700 hover:bg-blue-50"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => run(onDelete)}
+              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-red-700 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 export default function AdminStudents() {
   const handleUnauthorizedAccess = useUnauthorizedRedirect();
   const { courses } = useCourses();
+  const locations = useCourseLocations();
   const filterCourseCategories = [...courses.map((course) => course.category), 'Other'];
 
   const [students, setStudents] = useState([]);
@@ -408,6 +512,8 @@ export default function AdminStudents() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [page, setPage] = useState(1);
+  const [admittingId, setAdmittingId] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
@@ -505,6 +611,24 @@ export default function AdminStudents() {
     setEditStudent(null);
     setSuccessModal('Student record updated successfully.');
     fetchStudents();
+  }
+
+  async function handleAdmit(student) {
+    setAdmittingId(student.id);
+    try {
+      const res = await api.post('/admin/students/' + student.id + '/admit');
+      setSuccessModal(`Student admitted. SMS: ${res.data.smsStatus}, Email: ${res.data.emailStatus}.`);
+      fetchStudents();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+
+      setFetchError('Failed to admit student. Please try again.');
+    } finally {
+      setAdmittingId(null);
+    }
   }
 
   function toggleSelectOne(id) {
@@ -674,7 +798,7 @@ export default function AdminStudents() {
                   </button>
                 )}
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div>
                   <label className="mb-2 block text-xs font-medium text-slate-600">Admission</label>
                   <select
@@ -738,6 +862,21 @@ export default function AdminStudents() {
                     {COMPUTER_LITERACY_OPTIONS.map((level) => (
                       <option key={level} value={level}>
                         {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-slate-600">Location</label>
+                  <select
+                    value={filters.location}
+                    onChange={(e) => updateFilter('location', e.target.value)}
+                    className="portal-select"
+                  >
+                    <option value="">All</option>
+                    {locations.map((location) => (
+                      <option key={location} value={location}>
+                        {location}
                       </option>
                     ))}
                   </select>
@@ -811,7 +950,7 @@ export default function AdminStudents() {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
-                  <th className="px-5 py-4 font-semibold">
+                  <th className="px-3 py-4 font-semibold">
                     <input
                       type="checkbox"
                       checked={paginated.length > 0 && paginated.every((student) => selectedIds.has(student.id))}
@@ -819,33 +958,29 @@ export default function AdminStudents() {
                       aria-label="Select all students on this page"
                     />
                   </th>
-                  <th className="px-5 py-4 font-semibold">#</th>
-                  <th className="px-5 py-4 font-semibold">Name</th>
-                  <th className="px-5 py-4 font-semibold">Email</th>
-                  <th className="px-5 py-4 font-semibold">Phone</th>
-                  <th className="px-5 py-4 font-semibold">Course Category</th>
-                  <th className="px-5 py-4 font-semibold">Admission</th>
-                  <th className="px-5 py-4 font-semibold">Attendance</th>
-                  <th className="px-5 py-4 font-semibold">Completion</th>
-                  <th className="px-5 py-4 font-semibold">Registered</th>
-                  <th className="px-5 py-4 font-semibold">Actions</th>
+                  <th className="px-3 py-4 font-semibold">Name</th>
+                  <th className="px-3 py-4 font-semibold">Contact</th>
+                  <th className="px-3 py-4 font-semibold">Course Category</th>
+                  <th className="px-3 py-4 font-semibold">Status</th>
+                  <th className="px-3 py-4 font-semibold">Registered</th>
+                  <th className="px-3 py-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={11} className="px-5 py-10 text-center text-slate-500">Loading…</td>
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">Loading…</td>
                   </tr>
                 ) : paginated.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-5 py-10 text-center text-slate-500">
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                       {searchInput || activeFilterCount > 0 ? 'No students match your search or filters.' : 'No students registered yet.'}
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((student, index) => (
+                  paginated.map((student) => (
                     <tr key={student.id} className="border-t border-slate-100 transition hover:bg-blue-50/40">
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-4">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(student.id)}
@@ -853,33 +988,42 @@ export default function AdminStudents() {
                           aria-label={`Select ${student.fullName}`}
                         />
                       </td>
-                      <td className="px-5 py-4 text-slate-500">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                      <td className="px-5 py-4 font-semibold text-slate-900">{student.fullName}</td>
-                      <td className="px-5 py-4 text-slate-600">{student.emailAddress}</td>
-                      <td className="px-5 py-4 text-slate-600">{student.phoneNumber}</td>
-                      <td className="px-5 py-4 text-slate-600">{student.courseCategory}</td>
-                      <td className="px-5 py-4">
-                        <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} />
+                      <td className="px-3 py-4 font-semibold text-slate-900">
+                        <p className="max-w-[130px] truncate" title={student.fullName}>
+                          {student.fullName}
+                        </p>
                       </td>
-                      <td className="px-5 py-4">
-                        <StatusBadge value={student.attendanceStatus} styles={ATTENDANCE_BADGE_STYLES} />
+                      <td className="px-3 py-4 text-slate-600">
+                        <p className="max-w-[150px] truncate" title={student.emailAddress}>
+                          {student.emailAddress}
+                        </p>
+                        <p className="text-xs text-slate-400">{student.phoneNumber}</p>
                       </td>
-                      <td className="px-5 py-4">
-                        <StatusBadge value={student.courseCompletionStatus} styles={COMPLETION_BADGE_STYLES} />
+                      <td className="px-3 py-4 text-slate-600">
+                        <p className="max-w-[130px] truncate" title={student.courseCategory}>
+                          {student.courseCategory}
+                        </p>
                       </td>
-                      <td className="px-5 py-4 text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <button type="button" onClick={() => setViewStudent(student)} className="portal-button-secondary px-4 py-2 text-xs">
-                            View
-                          </button>
-                          <button type="button" onClick={() => setEditStudent(student)} className="portal-button-secondary bg-blue-50 text-blue-700 hover:border-blue-200 hover:bg-blue-100 hover:text-blue-700 px-4 py-2 text-xs">
-                            Edit
-                          </button>
-                          <button type="button" onClick={() => setDeleteStudent(student)} className="portal-button-secondary bg-blue-50 text-blue-700 hover:border-blue-200 hover:bg-blue-100 hover:text-blue-700 px-4 py-2 text-xs">
-                            Delete
-                          </button>
+                      <td className="px-3 py-4">
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} />
+                          <StatusBadge value={student.attendanceStatus} styles={ATTENDANCE_BADGE_STYLES} />
+                          <StatusBadge value={student.courseCompletionStatus} styles={COMPLETION_BADGE_STYLES} />
                         </div>
+                      </td>
+                      <td className="px-3 py-4 text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</td>
+                      <td className="px-3 py-4">
+                        <ActionsMenu
+                          student={student}
+                          admitting={admittingId === student.id}
+                          isOpen={openMenuId === student.id}
+                          onToggle={() => setOpenMenuId((prev) => (prev === student.id ? null : student.id))}
+                          onClose={() => setOpenMenuId(null)}
+                          onAdmit={() => handleAdmit(student)}
+                          onView={() => setViewStudent(student)}
+                          onEdit={() => setEditStudent(student)}
+                          onDelete={() => setDeleteStudent(student)}
+                        />
                       </td>
                     </tr>
                   ))

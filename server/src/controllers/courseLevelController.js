@@ -46,4 +46,16 @@ const setCourseLevel = async (req, res) => {
   }
 };
 
-module.exports = { getCourseLevels, setCourseLevel };
+const deleteCourseLevel = async (req, res) => {
+  const { category } = req.params;
+
+  try {
+    await prisma.courseLevel.deleteMany({ where: { category } });
+    res.json({ message: 'Course recommendation removed' });
+  } catch (error) {
+    console.error('Delete course level error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+module.exports = { getCourseLevels, setCourseLevel, deleteCourseLevel };

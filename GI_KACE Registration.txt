@@ -17,8 +17,8 @@ GI-KACE COURSE REGISTRATION FORM
 * Highest Level of Education:
 ? High School
 ? Diploma
-? Bachelor’s Degree
-? Master’s Degree
+? Bachelorï¿½s Degree
+? Masterï¿½s Degree
 ? Other: __________________ 
 * Field of Study: _____________________________________ 
 

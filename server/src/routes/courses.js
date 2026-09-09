@@ -21,3 +21,5 @@ router.put('/admin/courses/:id', verifyToken, updateCourse);
 router.delete('/admin/courses/:id', verifyToken, deleteCourse);
 
 module.exports = router;
+
+
