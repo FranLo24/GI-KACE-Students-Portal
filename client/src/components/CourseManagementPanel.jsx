@@ -286,6 +286,8 @@ export default function CourseManagementPanel() {
   const [addingCourse, setAddingCourse] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
@@ -351,6 +353,25 @@ export default function CourseManagementPanel() {
     }, 'Failed to update course fees.');
   }
 
+  async function syncFromInvoice() {
+    setSyncing(true);
+    setSyncMessage('');
+    try {
+      const res = await api.post('/admin/courses/sync');
+      setSyncMessage(res.data.message);
+      await fetchCourses();
+    } catch (err) {
+      if (err.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+      setSyncMessage(err.response?.data?.message || 'Failed to sync courses from the invoice site.');
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMessage(''), 6000);
+    }
+  }
+
   async function moveCourse(index, direction) {
     const target = index + direction;
     if (target < 0 || target >= courses.length) return;
@@ -383,10 +404,17 @@ export default function CourseManagementPanel() {
             Add or remove courses, upload course images, and set fees. Changes appear immediately on the homepage and registration form.
           </p>
         </div>
-        <button type="button" onClick={() => setAddingCourse((prev) => !prev)} className="portal-button-secondary px-4 py-2 text-xs">
-          {addingCourse ? 'Cancel' : '+ Add course'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={syncFromInvoice} disabled={syncing} className="portal-button-secondary px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50">
+            {syncing ? 'Syncing…' : 'Sync from Invoice'}
+          </button>
+          <button type="button" onClick={() => setAddingCourse((prev) => !prev)} className="portal-button-secondary px-4 py-2 text-xs">
+            {addingCourse ? 'Cancel' : '+ Add course'}
+          </button>
+        </div>
       </div>
+
+      {syncMessage && <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">{syncMessage}</div>}
 
       {error && <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 

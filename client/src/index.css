@@ -4,10 +4,10 @@
 
 :root {
   color-scheme: light;
-  --portal-font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --portal-font-family: 'Poppins', 'Segoe UI', 'Trebuchet MS', sans-serif;
   font-family: var(--portal-font-family);
-  background: #3CB4FF;
-  color: #422be4;
+  background: #ffffff;
+  color: #1e293b;
 }
 
 html {
@@ -17,11 +17,11 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background-color: #c2e4fa;
+  background-color: #f6f7fb;
   background-image:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.28), transparent 28%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 26%);
-  color: #422be4;
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.05), transparent 28%),
+    radial-gradient(circle at top right, rgba(253, 200, 0, 0.07), transparent 26%);
+  color: #1e293b;
 }
 
 #root {
@@ -38,7 +38,7 @@ img {
 }
 
 ::selection {
-  background: rgba(42, 5, 248, 0.18);
+  background: rgba(37, 99, 235, 0.18);
 }
 
 @layer base {
@@ -76,7 +76,7 @@ img {
     height: 24rem;
     top: 6rem;
     left: -8rem;
-    background: radial-gradient(circle, rgba(66, 43, 228, 0.2), transparent 68%);
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.14), transparent 68%);
   }
 
   .portal-shell::after {
@@ -84,7 +84,7 @@ img {
     height: 28rem;
     right: -10rem;
     top: 18rem;
-    background: radial-gradient(circle, rgba(37, 99, 235, 0.18), transparent 68%);
+    background: radial-gradient(circle, rgba(253, 200, 0, 0.16), transparent 68%);
   }
 
   .portal-container {
@@ -116,7 +116,7 @@ img {
   }
 
   .portal-button-primary {
-    @apply portal-button bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(66,43,228,0.24)] hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(37,99,235,0.28)];
+    @apply portal-button bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-white shadow-[0_16px_40px_rgba(253,200,0,0.32)] hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(253,200,0,0.42)];
   }
 
   .portal-button-secondary {
@@ -136,7 +136,7 @@ img {
   }
 
   .portal-gradient-text {
-    @apply bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-700 via-blue-500 to-blue-400 bg-clip-text text-transparent;
   }
 
   .portal-data-card {
@@ -211,10 +211,10 @@ img {
 @keyframes glowPulse {
   0%,
   100% {
-    box-shadow: 0 18px 55px rgba(24, 42, 238, 0.12);
+    box-shadow: 0 18px 55px rgba(29, 78, 216, 0.14);
   }
 
   50% {
-    box-shadow: 0 24px 65px rgba(37, 99, 235, 0.18);
+    box-shadow: 0 24px 65px rgba(37, 99, 235, 0.2);
   }
 }

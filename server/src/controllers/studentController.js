@@ -4,8 +4,6 @@ const { BUILTIN_FIELD_KEYS, REQUIRED_DB_COLUMNS } = require('../data/builtinFiel
 
 const prisma = new PrismaClient();
 
-const VALID_ATTENDANCE_STATUSES = ['present', 'absent', 'not_marked'];
-const VALID_COMPLETION_STATUSES = ['completed', 'not_completed'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^(?:0|\+233)\d{9}$/;
 const PHONE_TYPE_FIELDS = ['phoneNumber', 'alternativePhone', 'emergencyPhone'];
@@ -229,8 +227,7 @@ const registerStudent = async (req, res) => {
 };
 
 const getAllStudents = async (req, res) => {
-  const { q, admissionStatus, attendanceStatus, courseCompletionStatus, courseCategory, computerLiteracy, location } =
-    req.query;
+  const { q, admissionStatus, courseCategory, computerLiteracy, location } = req.query;
 
   const where = {};
 
@@ -244,8 +241,6 @@ const getAllStudents = async (req, res) => {
   }
 
   if (admissionStatus) where.admissionStatus = admissionStatus;
-  if (attendanceStatus) where.attendanceStatus = attendanceStatus;
-  if (courseCompletionStatus) where.courseCompletionStatus = courseCompletionStatus;
   if (courseCategory) where.courseCategory = courseCategory;
   if (computerLiteracy) where.computerLiteracy = computerLiteracy;
   if (location) where.customFields = { path: ['center-location'], equals: location };
@@ -356,51 +351,6 @@ const bulkDeleteStudents = async (req, res) => {
   }
 };
 
-const bulkUpdateAttendance = async (req, res) => {
-  const ids = parseIds(req.body.ids);
-  const { status } = req.body;
-
-  if (!ids) return res.status(400).json({ message: 'ids must be a non-empty array of student IDs' });
-  if (!VALID_ATTENDANCE_STATUSES.includes(status)) {
-    return res.status(400).json({ message: 'status must be one of present, absent, not_marked' });
-  }
-
-  try {
-    const result = await prisma.student.updateMany({
-      where: { id: { in: ids } },
-      data: { attendanceStatus: status },
-    });
-    res.json({ message: 'Attendance updated', updated: result.count });
-  } catch (error) {
-    console.error('Bulk update attendance error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
-const bulkUpdateCompletion = async (req, res) => {
-  const ids = parseIds(req.body.ids);
-  const { status } = req.body;
-
-  if (!ids) return res.status(400).json({ message: 'ids must be a non-empty array of student IDs' });
-  if (!VALID_COMPLETION_STATUSES.includes(status)) {
-    return res.status(400).json({ message: 'status must be one of completed, not_completed' });
-  }
-
-  try {
-    const result = await prisma.student.updateMany({
-      where: { id: { in: ids } },
-      data: {
-        courseCompletionStatus: status,
-        completedAt: status === 'completed' ? new Date() : null,
-      },
-    });
-    res.json({ message: 'Course completion updated', updated: result.count });
-  } catch (error) {
-    console.error('Bulk update completion error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
 module.exports = {
   registerStudent,
   getAllStudents,
@@ -408,6 +358,4 @@ module.exports = {
   updateStudent,
   deleteStudent,
   bulkDeleteStudents,
-  bulkUpdateAttendance,
-  bulkUpdateCompletion,
 };

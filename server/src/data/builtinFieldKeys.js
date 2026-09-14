@@ -1,6 +1,6 @@
 // Student columns the registration form can address. Kept in sync with the
 // scalar fields on the Student Prisma model (excluding id/timestamps/admission
-// and attendance status, which are admin-managed, not form input).
+// status, which is admin-managed, not form input).
 const BUILTIN_FIELD_KEYS = [
   'fullName', 'gender', 'nationality', 'idType', 'idTypeOther', 'idNumber',
   'phoneNumber', 'alternativePhone', 'emailAddress', 'residentialAddress', 'cityTown',

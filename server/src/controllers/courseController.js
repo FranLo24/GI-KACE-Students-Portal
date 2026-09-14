@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { syncCoursesFromInvoice } = require('../services/invoiceCourseSync');
 
 const prisma = new PrismaClient();
 
@@ -148,6 +149,22 @@ const setCourseFees = async (req, res) => {
   }
 };
 
+const syncCourses = async (req, res) => {
+  try {
+    const result = await syncCoursesFromInvoice();
+    if (result.skipped) {
+      return res.status(400).json({ message: result.reason });
+    }
+    res.json({
+      message: `Synced ${result.totalCourses} course(s): ${result.created} created, ${result.updated} updated, ${result.disabled} disabled.`,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Sync courses from invoice error:', error);
+    res.status(502).json({ message: error.message || 'Failed to sync courses from the invoice site.' });
+  }
+};
+
 module.exports = {
   getPublicCourses,
   getAdminCourses,
@@ -156,4 +173,5 @@ module.exports = {
   deleteCourse,
   reorderCourses,
   setCourseFees,
+  syncCourses,
 };

@@ -50,10 +50,6 @@ model Student {
   admissionSmsStatus   String?
   admissionEmailStatus String?
 
-  attendanceStatus       String    @default("not_marked")
-  courseCompletionStatus String    @default("not_completed")
-  completedAt            DateTime?
-
   customFields Json?
 
   @@map("students")
@@ -130,6 +126,11 @@ model Course {
   imageUrl     String?
   order        Int         @default(0)
   enabled      Boolean     @default(true)
+  // Normalized invoice product name that created/matches this course. Set
+  // only for courses that came from the invoice sync — lets re-syncs find
+  // the right row even after an admin edits `title`, and lets the sync
+  // distinguish courses it owns from ones an admin created by hand.
+  syncKey      String?     @unique
   updatedAt    DateTime    @updatedAt
   locationFees CourseFee[]
 

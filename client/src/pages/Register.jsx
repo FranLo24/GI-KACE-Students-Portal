@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Modal from '../components/Modal';
+import { useShowChrome } from '../hooks/useShowChrome';
 import CourseFeeList from '../components/CourseFeeList';
 import api from '../api/axios';
 import { buildZodSchema, getDefaultValues, isFieldVisible, sortByOrder } from '../utils/dynamicForm';
@@ -60,7 +61,7 @@ function getChipClass(selected) {
   return [
     'cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition duration-300',
     selected
-      ? 'border-transparent bg-gradient-to-r from-blue-500 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200/60'
+      ? 'border-transparent bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-white shadow-lg shadow-gold-200/60'
       : 'border-slate-200 bg-white/80 text-slate-600 hover:border-blue-200 hover:text-blue-700',
   ].join(' ');
 }
@@ -306,7 +307,7 @@ function RegistrationForm({ sections, headingScale }) {
                             className={[
                               'group relative overflow-hidden rounded-[24px] border text-left transition duration-300',
                               selected
-                                ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
+                                ? 'border-gold-500 bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-white shadow-[0_22px_70px_rgba(253,200,0,0.32)]'
                                 : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                             ].join(' ')}
                           >
@@ -335,7 +336,7 @@ function RegistrationForm({ sections, headingScale }) {
                         className={[
                           'flex min-h-[320px] flex-col justify-between rounded-[24px] border p-6 text-left transition duration-300',
                           courseCategory === 'Other'
-                            ? 'border-[#422be4] bg-gradient-to-r from-[#422be4] via-blue-500 to-blue-600 text-white shadow-[0_22px_70px_rgba(66,43,228,0.24)]'
+                            ? 'border-gold-500 bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-white shadow-[0_22px_70px_rgba(253,200,0,0.32)]'
                             : 'border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                         ].join(' ')}
                       >
@@ -441,6 +442,7 @@ function RegistrationForm({ sections, headingScale }) {
 }
 
 export default function Register() {
+  const showChrome = useShowChrome();
   const { formConfig, error: configFetchError } = useFormConfig('/form-config');
   const configError = !formConfig && configFetchError ? 'Failed to load the registration form. Please refresh the page.' : '';
 
@@ -474,6 +476,22 @@ export default function Register() {
   const headingScale = settings?.headingScale;
   const heroHeadingStyle = headingScale && headingScale !== 1 ? { fontSize: `calc(3rem * ${headingScale})` } : undefined;
   const sections = formConfig?.sections ? sortByOrder(formConfig.sections) : null;
+
+  const formContent = configError ? (
+    <div className="portal-panel mt-10 p-6 text-sm text-red-600">{configError}</div>
+  ) : !sections ? (
+    <div className="portal-panel mt-10 p-6 text-sm text-slate-500">Loading registration form…</div>
+  ) : (
+    <RegistrationForm sections={sections} headingScale={headingScale} />
+  );
+
+  if (!showChrome) {
+    return (
+      <div className="portal-shell min-h-screen">
+        <main className="portal-container py-8 pb-16">{formContent}</main>
+      </div>
+    );
+  }
 
   return (
     <div className="portal-shell flex min-h-screen flex-col">
@@ -516,13 +534,7 @@ export default function Register() {
           </div>
         </section>
 
-        {configError ? (
-          <div className="portal-panel mt-10 p-6 text-sm text-red-600">{configError}</div>
-        ) : !sections ? (
-          <div className="portal-panel mt-10 p-6 text-sm text-slate-500">Loading registration form…</div>
-        ) : (
-          <RegistrationForm sections={sections} headingScale={headingScale} />
-        )}
+        {formContent}
       </main>
 
       <Footer />

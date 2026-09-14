@@ -16,30 +16,15 @@ const STATIC_FIELD_LABELS = {
   admittedAt: 'Admitted On',
   admissionSmsStatus: 'Admission SMS',
   admissionEmailStatus: 'Admission Email',
-  attendanceStatus: 'Attendance',
-  courseCompletionStatus: 'Course Completion',
-  completedAt: 'Completed On',
 };
 
 const STATIC_VIEW_SECTIONS = [
   { title: 'Admission', fields: ['admissionStatus', 'admittedAt', 'admissionSmsStatus', 'admissionEmailStatus'] },
-  { title: 'Attendance & Completion', fields: ['attendanceStatus', 'courseCompletionStatus', 'completedAt'] },
 ];
 
 const ADMISSION_BADGE_STYLES = {
   pending: 'bg-slate-100 text-slate-600',
   admitted: 'bg-emerald-100 text-emerald-700',
-};
-
-const ATTENDANCE_BADGE_STYLES = {
-  present: 'bg-emerald-100 text-emerald-700',
-  absent: 'bg-red-100 text-red-700',
-  not_marked: 'bg-slate-100 text-slate-600',
-};
-
-const COMPLETION_BADGE_STYLES = {
-  completed: 'bg-emerald-100 text-emerald-700',
-  not_completed: 'bg-slate-100 text-slate-600',
 };
 
 function StatusBadge({ value, styles }) {
@@ -56,11 +41,8 @@ function StatusBadge({ value, styles }) {
 }
 
 function formatFieldValue(field, value) {
-  if (field === 'createdAt' || field === 'admittedAt' || field === 'completedAt') {
+  if (field === 'createdAt' || field === 'admittedAt') {
     return new Date(value).toLocaleDateString();
-  }
-  if (field === 'attendanceStatus' || field === 'courseCompletionStatus') {
-    return String(value).replace(/_/g, ' ');
   }
   return value;
 }
@@ -69,8 +51,6 @@ const COMPUTER_LITERACY_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
 
 const EMPTY_FILTERS = {
   admissionStatus: '',
-  attendanceStatus: '',
-  courseCompletionStatus: '',
   courseCategory: '',
   computerLiteracy: '',
   location: '',
@@ -472,7 +452,7 @@ function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, o
               disabled={student.admissionStatus === 'admitted' || admitting}
               className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {admitting ? 'Admitting…' : student.admissionStatus === 'admitted' ? 'Admitted' : 'Admit'}
+              {admitting ? 'Shortlisting…' : student.admissionStatus === 'admitted' ? 'Shortlisted' : 'Shortlist'}
             </button>
             <button
               type="button"
@@ -712,48 +692,6 @@ export default function AdminStudents() {
     }
   }
 
-  async function handleBulkAttendance(e) {
-    const status = e.target.value;
-    if (!status) return;
-    e.target.value = '';
-
-    setBulkLoading(true);
-    try {
-      await api.post('/admin/students/bulk-attendance', { ids: Array.from(selectedIds), status });
-      setSuccessModal('Attendance updated for the selected students.');
-      fetchStudents();
-    } catch (error) {
-      if (error.response?.status === 401) {
-        handleUnauthorizedAccess();
-        return;
-      }
-      setFetchError('Failed to update attendance. Please try again.');
-    } finally {
-      setBulkLoading(false);
-    }
-  }
-
-  async function handleBulkCompletion(e) {
-    const status = e.target.value;
-    if (!status) return;
-    e.target.value = '';
-
-    setBulkLoading(true);
-    try {
-      await api.post('/admin/students/bulk-completion', { ids: Array.from(selectedIds), status });
-      setSuccessModal('Course completion updated for the selected students.');
-      fetchStudents();
-    } catch (error) {
-      if (error.response?.status === 401) {
-        handleUnauthorizedAccess();
-        return;
-      }
-      setFetchError('Failed to update course completion. Please try again.');
-    } finally {
-      setBulkLoading(false);
-    }
-  }
-
   const totalPages = Math.max(1, Math.ceil(students.length / PAGE_SIZE));
   const paginated = students.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -827,31 +765,6 @@ export default function AdminStudents() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-medium text-slate-600">Attendance</label>
-                  <select
-                    value={filters.attendanceStatus}
-                    onChange={(e) => updateFilter('attendanceStatus', e.target.value)}
-                    className="portal-select"
-                  >
-                    <option value="">All</option>
-                    <option value="present">Present</option>
-                    <option value="absent">Absent</option>
-                    <option value="not_marked">Not Marked</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-slate-600">Completion</label>
-                  <select
-                    value={filters.courseCompletionStatus}
-                    onChange={(e) => updateFilter('courseCompletionStatus', e.target.value)}
-                    className="portal-select"
-                  >
-                    <option value="">All</option>
-                    <option value="completed">Completed</option>
-                    <option value="not_completed">Not Completed</option>
-                  </select>
-                </div>
-                <div>
                   <label className="mb-2 block text-xs font-medium text-slate-600">Course category</label>
                   <select
                     value={filters.courseCategory}
@@ -917,31 +830,6 @@ export default function AdminStudents() {
               >
                 Admit Selected
               </button>
-              <select
-                defaultValue=""
-                onChange={handleBulkAttendance}
-                disabled={bulkLoading}
-                className="portal-select w-44 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="" disabled>
-                  Set attendance…
-                </option>
-                <option value="present">Present</option>
-                <option value="absent">Absent</option>
-                <option value="not_marked">Not Marked</option>
-              </select>
-              <select
-                defaultValue=""
-                onChange={handleBulkCompletion}
-                disabled={bulkLoading}
-                className="portal-select w-48 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="" disabled>
-                  Set completion…
-                </option>
-                <option value="completed">Completed</option>
-                <option value="not_completed">Not Completed</option>
-              </select>
               <button
                 type="button"
                 onClick={() => setBulkConfirm('delete')}
@@ -1040,8 +928,6 @@ export default function AdminStudents() {
                       <td className="px-3 py-4">
                         <div className="flex flex-col items-start gap-1">
                           <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} />
-                          <StatusBadge value={student.attendanceStatus} styles={ATTENDANCE_BADGE_STYLES} />
-                          <StatusBadge value={student.courseCompletionStatus} styles={COMPLETION_BADGE_STYLES} />
                         </div>
                       </td>
                       <td className="px-3 py-4 text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</td>
