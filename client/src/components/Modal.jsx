@@ -1,5 +1,7 @@
+import { createPortal } from 'react-dom';
+
 export default function Modal({ title, message, onConfirm, onClose, showCancel = false }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
       <div className="glass-panel animate-rise-in w-full max-w-md overflow-hidden p-6">
         <div className="mb-5 space-y-2">
@@ -23,6 +25,7 @@ export default function Modal({ title, message, onConfirm, onClose, showCancel =
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

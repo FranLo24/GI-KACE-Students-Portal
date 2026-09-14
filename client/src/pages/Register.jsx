@@ -8,6 +8,7 @@ import CourseFeeList from '../components/CourseFeeList';
 import api from '../api/axios';
 import { buildZodSchema, getDefaultValues, isFieldVisible, sortByOrder } from '../utils/dynamicForm';
 import { useCourses } from '../hooks/useCourses';
+import { useFormConfig } from '../hooks/useFormConfig';
 import registerHero from '../assets/register-hero.png';
 
 function FieldLabel({ children, optional = false }) {
@@ -31,9 +32,9 @@ function ErrorMsg({ error }) {
   ) : null;
 }
 
-function SectionCard({ number, title, description, children, sectionRef, headingStyle }) {
+function SectionCard({ number, title, description, children, setSectionRef, headingStyle }) {
   return (
-    <section ref={sectionRef} className="portal-panel p-6 sm:p-8">
+    <section ref={setSectionRef} className="portal-panel p-6 sm:p-8">
       <div className="mb-6 flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Section {number}</p>
@@ -134,6 +135,7 @@ function DynamicField({ field, register, errors, values }) {
   }
 
   const inputType = ['email', 'tel', 'number', 'date'].includes(field.type) ? field.type : 'text';
+  const isGhanaCardIdNumber = field.key === 'idNumber' && values.idType === 'Ghana Card';
 
   return (
     <div key={field.key}>
@@ -142,9 +144,9 @@ function DynamicField({ field, register, errors, values }) {
         type={inputType}
         {...register(field.key)}
         inputMode={inputType === 'tel' ? 'numeric' : undefined}
-        maxLength={inputType === 'tel' ? 13 : undefined}
+        maxLength={inputType === 'tel' ? 13 : isGhanaCardIdNumber ? 15 : undefined}
         className={getInputClass(error)}
-        placeholder={field.placeholder || ''}
+        placeholder={isGhanaCardIdNumber ? 'GHA-XXXXXXXXX-X' : field.placeholder || ''}
       />
       <ErrorMsg error={error} />
     </div>
@@ -157,8 +159,7 @@ function RegistrationForm({ sections, headingScale }) {
   const [submitting, setSubmitting] = useState(false);
   const [courseLevels, setCourseLevels] = useState([]);
   const { courses: featuredCourses } = useCourses();
-  const ictSkillsSectionRef = useRef(null);
-  const emergencyContactSectionRef = useRef(null);
+  const sectionRefs = useRef({});
 
   useEffect(() => {
     api
@@ -227,19 +228,18 @@ function RegistrationForm({ sections, headingScale }) {
     reset();
   };
 
-  const scrollToIctSkillsSection = () => {
-    ictSkillsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const setSectionRef = (key) => (el) => {
+    sectionRefs.current[key] = el;
   };
 
-  const scrollToEmergencyContactSection = () => {
-    emergencyContactSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollToSection = (key) => {
+    sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const selectCourse = (course) => {
     setValue('courseCategory', course.category, { shouldDirty: true, shouldValidate: true });
     setValue('courseTitle', course.title, { shouldDirty: true, shouldValidate: true });
     setValue('courseCategoryOther', '', { shouldDirty: true, shouldValidate: true });
-    window.requestAnimationFrame(scrollToEmergencyContactSection);
   };
 
   const selectCustomCourse = () => {
@@ -250,12 +250,6 @@ function RegistrationForm({ sections, headingScale }) {
 
   const headingStyle =
     headingScale && headingScale !== 1 ? { fontSize: `calc(1.5rem * ${headingScale})` } : undefined;
-
-  const sectionRefFor = (key) => {
-    if (key === 'ict-skills-experience') return ictSkillsSectionRef;
-    if (key === 'emergency-contact') return emergencyContactSectionRef;
-    return undefined;
-  };
 
   return (
     <>
@@ -270,6 +264,7 @@ function RegistrationForm({ sections, headingScale }) {
                 number={index + 1}
                 title={section.title}
                 description={section.description}
+                setSectionRef={setSectionRef(section.key)}
                 headingStyle={headingStyle}
               >
                 <input type="hidden" {...register('courseCategory')} />
@@ -282,7 +277,11 @@ function RegistrationForm({ sections, headingScale }) {
                         Select your computer literacy level in the ICT Skills &amp; Experience section above to see courses for that level.
                       </p>
                     </div>
-                    <button type="button" onClick={scrollToIctSkillsSection} className="portal-button-secondary shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection('ict-skills-experience')}
+                      className="portal-button-secondary shrink-0"
+                    >
                       Go to ICT Skills
                     </button>
                   </div>
@@ -392,7 +391,7 @@ function RegistrationForm({ sections, headingScale }) {
               number={index + 1}
               title={section.title}
               description={section.description}
-              sectionRef={sectionRefFor(section.key)}
+              setSectionRef={setSectionRef(section.key)}
               headingStyle={headingStyle}
             >
               <div className="grid gap-5 md:grid-cols-2">
@@ -442,15 +441,8 @@ function RegistrationForm({ sections, headingScale }) {
 }
 
 export default function Register() {
-  const [formConfig, setFormConfig] = useState(null);
-  const [configError, setConfigError] = useState('');
-
-  useEffect(() => {
-    api
-      .get('/form-config')
-      .then((res) => setFormConfig(res.data))
-      .catch(() => setConfigError('Failed to load the registration form. Please refresh the page.'));
-  }, []);
+  const { formConfig, error: configFetchError } = useFormConfig('/form-config');
+  const configError = !formConfig && configFetchError ? 'Failed to load the registration form. Please refresh the page.' : '';
 
   useEffect(() => {
     const settings = formConfig?.settings;

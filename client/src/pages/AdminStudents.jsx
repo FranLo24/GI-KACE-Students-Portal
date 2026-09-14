@@ -4,7 +4,8 @@ import Modal from '../components/Modal';
 import api from '../api/axios';
 import { useCourses } from '../hooks/useCourses';
 import { useCourseLocations } from '../hooks/useCourseLocations';
-import { isFieldVisible, sortByOrder } from '../utils/dynamicForm';
+import { useFormConfig } from '../hooks/useFormConfig';
+import { getPersonalNameFields, getStudentDisplayName, isFieldVisible, sortByOrder } from '../utils/dynamicForm';
 import { useUnauthorizedRedirect } from '../hooks/useUnauthorizedRedirect';
 
 const PAGE_SIZE = 10;
@@ -96,7 +97,7 @@ function ViewModal({ student, sections, onClose }) {
         <div className="flex items-center justify-between border-b border-white/60 px-6 py-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Student profile</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-900">{student.fullName}</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-900">{getStudentDisplayName(student, sections)}</h2>
           </div>
           <button type="button" onClick={onClose} className="portal-button-secondary px-4 py-2">
             Close
@@ -275,7 +276,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
         return;
       }
 
-      setError('Failed to save changes. Please try again.');
+      setError(error.response?.data?.message || 'Failed to save changes. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -534,19 +535,27 @@ export default function AdminStudents() {
   const debouncedSearch = useDebounce(searchInput, 300);
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
+  const { formConfig } = useFormConfig('/admin/form-config', { onUnauthorized: handleUnauthorizedAccess });
+
   useEffect(() => {
-    api
-      .get('/admin/form-config')
-      .then((res) => {
-        const enabled = (res.data.sections || [])
-          .filter((section) => section.enabled)
-          .map((section) => ({ ...section, fields: (section.fields || []).filter((field) => field.enabled) }));
-        setFormSections(sortByOrder(enabled));
-      })
-      .catch((error) => {
-        if (error.response?.status === 401) handleUnauthorizedAccess();
-      });
-  }, [handleUnauthorizedAccess]);
+    if (!formConfig) return;
+    const enabled = (formConfig.sections || [])
+      .filter((section) => section.enabled)
+      .map((section) => ({ ...section, fields: (section.fields || []).filter((field) => field.enabled) }));
+    setFormSections(sortByOrder(enabled));
+  }, [formConfig]);
+
+  // Keys already surfaced through the combined Name column (see
+  // getStudentDisplayName) — excluded from the Details column below so a
+  // split-out Last/Other Names field isn't shown twice.
+  const nameFieldKeys = new Set(getPersonalNameFields(formSections).map((field) => field.key));
+
+  // Any custom field an admin adds via the form builder lands here
+  // automatically — no table code changes needed to surface it.
+  const extraFieldsBySection = formSections.map((section) => ({
+    ...section,
+    fields: sortByOrder(section.fields || []).filter((field) => !field.isBuiltIn && !nameFieldKeys.has(field.key)),
+  }));
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -747,6 +756,12 @@ export default function AdminStudents() {
 
   const totalPages = Math.max(1, Math.ceil(students.length / PAGE_SIZE));
   const paginated = students.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function getExtraFieldEntries(student) {
+    return extraFieldsBySection
+      .flatMap((section) => section.fields.map((field) => ({ field, value: student.customFields?.[field.key] })))
+      .filter(({ value }) => value !== undefined && value !== null && String(value).trim() !== '');
+  }
 
   return (
     <div className="space-y-6">
@@ -961,6 +976,7 @@ export default function AdminStudents() {
                   <th className="px-3 py-4 font-semibold">Name</th>
                   <th className="px-3 py-4 font-semibold">Contact</th>
                   <th className="px-3 py-4 font-semibold">Course Category</th>
+                  <th className="px-3 py-4 font-semibold">Details</th>
                   <th className="px-3 py-4 font-semibold">Status</th>
                   <th className="px-3 py-4 font-semibold">Registered</th>
                   <th className="px-3 py-4 font-semibold">Actions</th>
@@ -969,28 +985,31 @@ export default function AdminStudents() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">Loading…</td>
+                    <td colSpan={8} className="px-4 py-10 text-center text-slate-500">Loading…</td>
                   </tr>
                 ) : paginated.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                       {searchInput || activeFilterCount > 0 ? 'No students match your search or filters.' : 'No students registered yet.'}
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((student) => (
+                  paginated.map((student) => {
+                    const displayName = getStudentDisplayName(student, formSections);
+                    const extraFields = getExtraFieldEntries(student);
+                    return (
                     <tr key={student.id} className="border-t border-slate-100 transition hover:bg-blue-50/40">
                       <td className="px-3 py-4">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(student.id)}
                           onChange={() => toggleSelectOne(student.id)}
-                          aria-label={`Select ${student.fullName}`}
+                          aria-label={`Select ${displayName}`}
                         />
                       </td>
                       <td className="px-3 py-4 font-semibold text-slate-900">
-                        <p className="max-w-[130px] truncate" title={student.fullName}>
-                          {student.fullName}
+                        <p className="max-w-[130px] truncate" title={displayName}>
+                          {displayName}
                         </p>
                       </td>
                       <td className="px-3 py-4 text-slate-600">
@@ -1003,6 +1022,20 @@ export default function AdminStudents() {
                         <p className="max-w-[130px] truncate" title={student.courseCategory}>
                           {student.courseCategory}
                         </p>
+                      </td>
+                      <td className="px-3 py-4 text-slate-600">
+                        {extraFields.length === 0 ? (
+                          <span className="text-xs text-slate-400">—</span>
+                        ) : (
+                          <div className="flex max-w-[200px] flex-col gap-0.5">
+                            {extraFields.map(({ field, value }) => (
+                              <p key={field.key} className="truncate text-xs" title={`${field.label}: ${value}`}>
+                                <span className="font-medium text-slate-500">{field.label}:</span>{' '}
+                                {String(value)}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex flex-col items-start gap-1">
@@ -1026,7 +1059,8 @@ export default function AdminStudents() {
                         />
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1091,7 +1125,7 @@ export default function AdminStudents() {
       {deleteStudent && (
         <Modal
           title="Delete Student"
-          message={'Are you sure you want to delete ' + deleteStudent.fullName + '? This action cannot be undone.'}
+          message={'Are you sure you want to delete ' + getStudentDisplayName(deleteStudent, formSections) + '? This action cannot be undone.'}
           showCancel
           onClose={() => setDeleteStudent(null)}
           onConfirm={deleteLoading ? undefined : handleDelete}

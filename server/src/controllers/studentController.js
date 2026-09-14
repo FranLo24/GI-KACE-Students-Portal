@@ -10,6 +10,12 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^(?:0|\+233)\d{9}$/;
 const PHONE_TYPE_FIELDS = ['phoneNumber', 'alternativePhone', 'emergencyPhone'];
 
+// Ghana Card numbers follow a fixed GHA-XXXXXXXXX-X format (9 digits then a
+// check digit), enforced only when ID Type is "Ghana Card" — otherwise the
+// admin-configured idNumber pattern (validation.pattern) still applies.
+const GHANA_CARD_ID_PATTERN = /^GHA-\d{9}-\d$/;
+const GHANA_CARD_ID_MESSAGE = 'ID Number must be in the format GHA-XXXXXXXXX-X';
+
 function normalizeEmail(emailAddress = '') {
   return emailAddress.trim().toLowerCase();
 }
@@ -64,6 +70,13 @@ function processDynamicFields(body, fields) {
 
     if (field.type === 'tel' && !PHONE_REGEX.test(value)) {
       fieldErrors[field.key] = `${field.label} must start with 0 or +233 and be followed by 9 digits`;
+      return;
+    }
+
+    if (field.key === 'idNumber' && values.idType === 'Ghana Card') {
+      if (!GHANA_CARD_ID_PATTERN.test(value)) {
+        fieldErrors[field.key] = GHANA_CARD_ID_MESSAGE;
+      }
       return;
     }
 

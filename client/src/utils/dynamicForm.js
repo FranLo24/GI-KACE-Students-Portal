@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 const PHONE_REGEX = /^(?:0|\+233)\d{9}$/;
 
+// Ghana Card numbers follow a fixed GHA-XXXXXXXXX-X format (9 digits then a
+// check digit) regardless of whatever pattern an admin has configured for
+// the generic ID Number field — enforced only when ID Type is "Ghana Card".
+const GHANA_CARD_ID_PATTERN = /^GHA-\d{9}-\d$/;
+const GHANA_CARD_ID_MESSAGE = 'ID Number must be in the format GHA-XXXXXXXXX-X';
+
 export function sortByOrder(items = []) {
   return [...items].sort((a, b) => a.order - b.order);
 }
@@ -27,7 +33,9 @@ function baseStringSchema(field) {
     schema = schema.regex(PHONE_REGEX, `${field.label} must start with 0 or +233 and be followed by 9 digits`);
   }
 
-  if (field.validation?.pattern) {
+  // idNumber's pattern is conditional on idType (see the superRefine pass
+  // below for the Ghana Card case), so it's validated there instead.
+  if (field.validation?.pattern && field.key !== 'idNumber') {
     schema = schema.regex(new RegExp(field.validation.pattern), field.validation.message || `${field.label} is invalid`);
   }
 
@@ -78,6 +86,21 @@ export function buildZodSchema(sections) {
     fields.forEach((field) => {
       const value = data[field.key];
 
+      if (field.key === 'idNumber' && value) {
+        if (data.idType === 'Ghana Card') {
+          if (!GHANA_CARD_ID_PATTERN.test(value)) {
+            ctx.addIssue({ code: 'custom', message: GHANA_CARD_ID_MESSAGE, path: ['idNumber'] });
+          }
+        } else if (field.validation?.pattern && !new RegExp(field.validation.pattern).test(value)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: field.validation.message || `${field.label} is invalid`,
+            path: ['idNumber'],
+          });
+        }
+        return;
+      }
+
       if (field.conditionalOn) {
         const conditionMet = data[field.conditionalOn.field] === field.conditionalOn.value;
         if (conditionMet && !value?.toString().trim()) {
@@ -121,4 +144,31 @@ export function getDefaultValues(sections) {
     defaults[field.key] = field.type === 'checkbox' ? false : '';
   });
   return defaults;
+}
+
+// The registration form's "Full Name" field is a single required Student
+// column (see server/src/data/builtinFieldKeys.js), but an admin can split it
+// into separate First/Last/Other Names fields via the form builder — the
+// extra parts land as custom fields alongside the original fullName value.
+// This locates all of those name parts (in display order) so callers can
+// reassemble the full name instead of showing only the first part.
+export function getPersonalNameFields(sections = []) {
+  const section = sections.find((s) => (s.fields || []).some((field) => field.key === 'fullName'));
+  if (!section) return [];
+
+  return sortByOrder(section.fields || []).filter(
+    (field) => field.key === 'fullName' || /\b(last|other)\s*names?\b/i.test(field.label || ''),
+  );
+}
+
+export function getStudentDisplayName(student, sections = []) {
+  const nameFields = getPersonalNameFields(sections);
+  if (nameFields.length <= 1) return student.fullName;
+
+  const assembled = nameFields
+    .map((field) => (field.isBuiltIn ? student[field.key] : student.customFields?.[field.key]))
+    .filter((value) => value !== undefined && value !== null && String(value).trim() !== '')
+    .join(' ');
+
+  return assembled || student.fullName;
 }
