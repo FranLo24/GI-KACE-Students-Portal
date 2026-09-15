@@ -228,6 +228,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
 
   const [admitLoading, setAdmitLoading] = useState(false);
   const [admitResult, setAdmitResult] = useState(null);
+  const [admitConfirmOpen, setAdmitConfirmOpen] = useState(false);
 
   const formValues = { ...form, ...(form.customFields || {}) };
 
@@ -330,7 +331,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
                   <div className="flex items-end">
                     <button
                       type="button"
-                      onClick={handleAdmit}
+                      onClick={() => setAdmitConfirmOpen(true)}
                       disabled={form.admissionStatus === 'admitted' || admitLoading}
                       className="portal-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -379,6 +380,23 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
           </div>
         </form>
       </div>
+
+      {admitConfirmOpen && (
+        <Modal
+          title="Shortlist Student"
+          message={`Admit ${getStudentDisplayName(student, sections)}? They will receive an admission SMS and email.`}
+          showCancel
+          onClose={() => setAdmitConfirmOpen(false)}
+          onConfirm={
+            admitLoading
+              ? undefined
+              : () => {
+                  setAdmitConfirmOpen(false);
+                  handleAdmit();
+                }
+          }
+        />
+      )}
     </div>
   );
 }
@@ -507,6 +525,7 @@ export default function AdminStudents() {
   const [editStudent, setEditStudent] = useState(null);
   const [deleteStudent, setDeleteStudent] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [admitConfirm, setAdmitConfirm] = useState(null);
 
   const [successModal, setSuccessModal] = useState('');
 
@@ -606,9 +625,12 @@ export default function AdminStudents() {
     setAdmittingId(student.id);
     try {
       const res = await api.post('/admin/students/' + student.id + '/admit');
+      setAdmitConfirm(null);
       setSuccessModal(`Student admitted. SMS: ${res.data.smsStatus}, Email: ${res.data.emailStatus}.`);
       fetchStudents();
     } catch (error) {
+      setAdmitConfirm(null);
+
       if (error.response?.status === 401) {
         handleUnauthorizedAccess();
         return;
@@ -938,7 +960,7 @@ export default function AdminStudents() {
                           isOpen={openMenuId === student.id}
                           onToggle={() => setOpenMenuId((prev) => (prev === student.id ? null : student.id))}
                           onClose={() => setOpenMenuId(null)}
-                          onAdmit={() => handleAdmit(student)}
+                          onAdmit={() => setAdmitConfirm(student)}
                           onView={() => setViewStudent(student)}
                           onEdit={() => setEditStudent(student)}
                           onDelete={() => setDeleteStudent(student)}
@@ -1015,6 +1037,20 @@ export default function AdminStudents() {
           showCancel
           onClose={() => setDeleteStudent(null)}
           onConfirm={deleteLoading ? undefined : handleDelete}
+        />
+      )}
+
+      {admitConfirm && (
+        <Modal
+          title="Shortlist Student"
+          message={
+            'Admit ' +
+            getStudentDisplayName(admitConfirm, formSections) +
+            '? They will receive an admission SMS and email.'
+          }
+          showCancel
+          onClose={() => setAdmitConfirm(null)}
+          onConfirm={admittingId === admitConfirm.id ? undefined : () => handleAdmit(admitConfirm)}
         />
       )}
 
