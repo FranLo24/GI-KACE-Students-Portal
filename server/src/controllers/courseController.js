@@ -156,7 +156,7 @@ const syncCourses = async (req, res) => {
       return res.status(400).json({ message: result.reason });
     }
     res.json({
-      message: `Synced ${result.totalCourses} course(s): ${result.created} created, ${result.updated} updated, ${result.disabled} disabled.`,
+      message: `Synced ${result.totalCourses} course(s): ${result.created} created, ${result.adopted} matched to existing courses, ${result.updated} updated, ${result.disabled} disabled.`,
       ...result,
     });
   } catch (error) {

@@ -27,7 +27,12 @@ const ADMISSION_BADGE_STYLES = {
   admitted: 'bg-emerald-100 text-emerald-700',
 };
 
-function StatusBadge({ value, styles }) {
+const ADMISSION_STATUS_LABELS = {
+  pending: 'Pending',
+  admitted: 'Shortlisted',
+};
+
+function StatusBadge({ value, styles, labels }) {
   return (
     <span
       className={
@@ -35,7 +40,7 @@ function StatusBadge({ value, styles }) {
         (styles[value] || 'bg-slate-100 text-slate-600')
       }
     >
-      {String(value).replace(/_/g, ' ')}
+      {labels?.[value] || String(value).replace(/_/g, ' ')}
     </span>
   );
 }
@@ -783,7 +788,7 @@ export default function AdminStudents() {
                   >
                     <option value="">All</option>
                     <option value="pending">Pending</option>
-                    <option value="admitted">Admitted</option>
+                    <option value="admitted">Shortlisted</option>
                   </select>
                 </div>
                 <div>
@@ -949,7 +954,7 @@ export default function AdminStudents() {
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex flex-col items-start gap-1">
-                          <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} />
+                          <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} labels={ADMISSION_STATUS_LABELS} />
                         </div>
                       </td>
                       <td className="px-3 py-4 text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</td>

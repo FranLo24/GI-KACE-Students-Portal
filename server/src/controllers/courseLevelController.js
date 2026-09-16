@@ -1,5 +1,4 @@
 const { PrismaClient } = require('@prisma/client');
-const { COURSE_CATEGORIES } = require('../data/courseCategories');
 
 const prisma = new PrismaClient();
 
@@ -7,10 +6,17 @@ const VALID_LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
 
 const getCourseLevels = async (req, res) => {
   try {
-    const rows = await prisma.courseLevel.findMany();
+    const [rows, courses] = await Promise.all([
+      prisma.courseLevel.findMany(),
+      prisma.course.findMany({ select: { category: true } }),
+    ]);
     const levelByCategory = new Map(rows.map((row) => [row.category, row.level]));
 
-    const categories = new Set([...COURSE_CATEGORIES, ...levelByCategory.keys()]);
+    // Live course catalogue (including new admin- or invoice-sync-created
+    // courses) union'd with any category that already has a saved level —
+    // so a category never disappears just because its course was disabled
+    // or removed after a level was set for it.
+    const categories = new Set([...courses.map((course) => course.category), ...levelByCategory.keys()]);
 
     const courseLevels = Array.from(categories).map((category) => ({
       category,

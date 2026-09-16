@@ -3,14 +3,30 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+const PAGE_SIZE = 100;
+
 // Maps an invoice branch_code to the "Center Location" option strings this
 // portal already uses (Admin > Settings > form builder > center-location
-// field). Add an entry here whenever the invoice site adds a new branch —
+// field). Multiple aliases per location because the invoice API has used
+// different code formats across environments (e.g. "SUNYANI" vs "SUN") —
+// add an entry here whenever the invoice site adds a new branch or code;
 // unmapped branches are skipped (and logged) rather than guessed at.
-const BRANCH_LOCATION_MAP = {
+const BRANCH_LOCATION_ALIASES = {
   ACCRA: 'Accra',
   BOLGA: 'Bolgatanga',
+  BOLGATANGA: 'Bolgatanga',
+  SUN: 'Sunyani',
   SUNYANI: 'Sunyani',
+};
+
+// Maps an invoice product name to the exact title of an existing,
+// hand-created course it should be treated as — for cases where the
+// invoice site's name doesn't match the portal's course title verbatim
+// (e.g. an abbreviation). Without an entry here, a mismatched name creates
+// a separate course card instead of updating the one you'd expect. Add an
+// entry whenever that happens.
+const COURSE_NAME_ALIASES = {
+  DBC: 'Diploma in Business Computing',
 };
 
 function normalizeName(name) {
@@ -32,9 +48,9 @@ function groupAcademicProducts(products) {
     if (!name) continue;
 
     const branchCode = product.branch?.branch_code;
-    const location = branchCode ? BRANCH_LOCATION_MAP[branchCode] : undefined;
+    const location = branchCode ? BRANCH_LOCATION_ALIASES[branchCode.toUpperCase()] : undefined;
     if (!location) {
-      console.warn(`[invoiceCourseSync] Unmapped branch "${branchCode}" for product "${name}" — add it to BRANCH_LOCATION_MAP to sync its price.`);
+      console.warn(`[invoiceCourseSync] Unmapped branch "${branchCode}" for product "${name}" — add it to BRANCH_LOCATION_ALIASES to sync its price.`);
       continue;
     }
 
@@ -45,33 +61,52 @@ function groupAcademicProducts(products) {
   return groups;
 }
 
+async function fetchAllProducts(url, headers) {
+  const all = [];
+  let page = 1;
+
+  // Offset-based pagination — keep requesting pages until a short (or
+  // empty) page comes back, matching the API's page/limit contract.
+  while (true) {
+    const { data } = await axios.get(url, { params: { page, limit: PAGE_SIZE }, headers, timeout: 15000 });
+    if (!Array.isArray(data)) {
+      throw new Error('Invoice products API did not return an array — check INVOICE_PRODUCTS_API_URL and response shape.');
+    }
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    page += 1;
+  }
+
+  return all;
+}
+
 // Pulls the product list from the invoice API and upserts it into the local
-// Course/CourseFee tables. Only touches courses/fees it created on a
-// previous run (tracked via Course.syncKey) — anything an admin created by
-// hand in the Course Management panel is left alone.
+// Course/CourseFee tables. A course is matched, in order:
+//   1. by Course.syncKey (a course this sync created/adopted on a prior run)
+//   2. by an exact title match against a course an admin created by hand
+//      (syncKey still null) — this "adopts" it instead of creating a
+//      duplicate entry, since the admin catalogue and invoice catalogue
+//      often list the same course under the same name
+//   3. otherwise a new course is created
+// Anything the sync doesn't recognize (custom descriptions, images, courses
+// with no invoice counterpart) is left untouched.
 async function syncCoursesFromInvoice() {
   const url = process.env.INVOICE_PRODUCTS_API_URL;
   if (!url) {
     return { skipped: true, reason: 'INVOICE_PRODUCTS_API_URL is not configured' };
   }
 
-  const headers = process.env.INVOICE_API_KEY ? { Authorization: `Bearer ${process.env.INVOICE_API_KEY}` } : undefined;
-  const { data: products } = await axios.get(url, { headers });
-
-  // Refuse to proceed on an unexpected shape rather than silently treating
-  // it as an empty product list — that would soft-disable every previously
-  // synced course on the very next run.
-  if (!Array.isArray(products)) {
-    throw new Error('Invoice products API did not return an array — check INVOICE_PRODUCTS_API_URL and response shape.');
-  }
+  const headers = process.env.INVOICE_API_KEY ? { 'x-api-key': process.env.INVOICE_API_KEY } : undefined;
+  const products = await fetchAllProducts(url, headers);
 
   const groups = groupAcademicProducts(products);
   if (groups.size === 0) {
     throw new Error('Invoice products API returned no active academic products — aborting sync to avoid disabling every course.');
   }
-  const knownLocations = new Set(Object.values(BRANCH_LOCATION_MAP));
+  const knownLocations = new Set(Object.values(BRANCH_LOCATION_ALIASES));
 
   let created = 0;
+  let adopted = 0;
   let updated = 0;
   let disabled = 0;
 
@@ -82,21 +117,32 @@ async function syncCoursesFromInvoice() {
 
     let course = await prisma.course.findUnique({ where: { syncKey: name }, include: { locationFees: true } });
 
-    if (!course) {
-      const maxOrder = await prisma.course.aggregate({ _max: { order: true } });
-      course = await prisma.course.create({
-        data: {
-          title: name,
-          category: name,
-          syncKey: name,
-          enabled: true,
-          order: (maxOrder._max.order ?? -1) + 1,
-        },
-        include: { locationFees: true },
-      });
-      created += 1;
-    } else {
+    if (course) {
       updated += 1;
+    } else {
+      // Look for a hand-created course with the same (or aliased) title
+      // before making a new one, so re-running the sync after an admin has
+      // already built out the catalogue doesn't produce duplicate cards.
+      const canonicalTitle = COURSE_NAME_ALIASES[name] || name;
+      const existing = await prisma.course.findFirst({ where: { syncKey: null, title: canonicalTitle }, include: { locationFees: true } });
+
+      if (existing) {
+        course = await prisma.course.update({ where: { id: existing.id }, data: { syncKey: name }, include: { locationFees: true } });
+        adopted += 1;
+      } else {
+        const maxOrder = await prisma.course.aggregate({ _max: { order: true } });
+        course = await prisma.course.create({
+          data: {
+            title: canonicalTitle,
+            category: canonicalTitle,
+            syncKey: name,
+            enabled: true,
+            order: (maxOrder._max.order ?? -1) + 1,
+          },
+          include: { locationFees: true },
+        });
+        created += 1;
+      }
     }
 
     await prisma.$transaction(
@@ -137,7 +183,13 @@ async function syncCoursesFromInvoice() {
     disabled = disappeared.length;
   }
 
-  return { skipped: false, created, updated, disabled, totalCourses: groups.size };
+  return { skipped: false, created, adopted, updated, disabled, totalCourses: groups.size };
 }
 
-module.exports = { syncCoursesFromInvoice, groupAcademicProducts, BRANCH_LOCATION_MAP };
+module.exports = {
+  syncCoursesFromInvoice,
+  groupAcademicProducts,
+  fetchAllProducts,
+  BRANCH_LOCATION_ALIASES,
+  COURSE_NAME_ALIASES,
+};
