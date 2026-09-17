@@ -406,7 +406,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
   );
 }
 
-function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, onView, onEdit, onDelete }) {
+function ActionsMenu({ student, admitting, invoicing, isOpen, onToggle, onClose, onAdmit, onInvoice, onView, onEdit, onDelete }) {
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
   const [position, setPosition] = useState(null);
@@ -479,6 +479,14 @@ function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, o
             </button>
             <button
               type="button"
+              onClick={() => run(onInvoice)}
+              disabled={invoicing}
+              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {invoicing ? 'Creating Invoice…' : 'Create Invoice'}
+            </button>
+            <button
+              type="button"
               onClick={() => run(onView)}
               className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
@@ -517,6 +525,7 @@ export default function AdminStudents() {
   const [fetchError, setFetchError] = useState('');
   const [page, setPage] = useState(1);
   const [admittingId, setAdmittingId] = useState(null);
+  const [invoicingId, setInvoicingId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -531,6 +540,7 @@ export default function AdminStudents() {
   const [deleteStudent, setDeleteStudent] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [admitConfirm, setAdmitConfirm] = useState(null);
+  const [invoiceConfirm, setInvoiceConfirm] = useState(null);
 
   const [successModal, setSuccessModal] = useState('');
 
@@ -644,6 +654,30 @@ export default function AdminStudents() {
       setFetchError('Failed to admit student. Please try again.');
     } finally {
       setAdmittingId(null);
+    }
+  }
+
+  async function handleCreateInvoice(student) {
+    setInvoicingId(student.id);
+    try {
+      const res = await api.post('/admin/students/' + student.id + '/invoice');
+      setInvoiceConfirm(null);
+      const { matchedProduct } = res.data;
+      setSuccessModal(
+        `Invoice created for ${getStudentDisplayName(student, formSections)}` +
+          (matchedProduct ? ` — matched to "${matchedProduct.name}" (GHS ${matchedProduct.price}).` : '.')
+      );
+    } catch (error) {
+      setInvoiceConfirm(null);
+
+      if (error.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+
+      setFetchError(error.response?.data?.message || 'Failed to create invoice. Please try again.');
+    } finally {
+      setInvoicingId(null);
     }
   }
 
@@ -962,10 +996,12 @@ export default function AdminStudents() {
                         <ActionsMenu
                           student={student}
                           admitting={admittingId === student.id}
+                          invoicing={invoicingId === student.id}
                           isOpen={openMenuId === student.id}
                           onToggle={() => setOpenMenuId((prev) => (prev === student.id ? null : student.id))}
                           onClose={() => setOpenMenuId(null)}
                           onAdmit={() => setAdmitConfirm(student)}
+                          onInvoice={() => setInvoiceConfirm(student)}
                           onView={() => setViewStudent(student)}
                           onEdit={() => setEditStudent(student)}
                           onDelete={() => setDeleteStudent(student)}
@@ -1056,6 +1092,19 @@ export default function AdminStudents() {
           showCancel
           onClose={() => setAdmitConfirm(null)}
           onConfirm={admittingId === admitConfirm.id ? undefined : () => handleAdmit(admitConfirm)}
+        />
+      )}
+
+      {invoiceConfirm && (
+        <Modal
+          title="Create Invoice"
+          message={
+            `Create an academic invoice for ${getStudentDisplayName(invoiceConfirm, formSections)} ` +
+            `(${invoiceConfirm.courseTitle})? This creates the invoice on the e-invoice site immediately.`
+          }
+          showCancel
+          onClose={() => setInvoiceConfirm(null)}
+          onConfirm={invoicingId === invoiceConfirm.id ? undefined : () => handleCreateInvoice(invoiceConfirm)}
         />
       )}
 

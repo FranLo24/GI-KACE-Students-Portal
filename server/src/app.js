@@ -8,6 +8,7 @@ const studentRoutes = require('./routes/students');
 const courseLevelRoutes = require('./routes/courseLevels');
 const formConfigRoutes = require('./routes/formConfig');
 const courseRoutes = require('./routes/courses');
+const invoiceRoutes = require('./routes/invoices');
 
 const app = express();
 
@@ -20,5 +21,6 @@ app.use('/api', studentRoutes);
 app.use('/api', courseLevelRoutes);
 app.use('/api', formConfigRoutes);
 app.use('/api', courseRoutes);
+app.use('/api', invoiceRoutes);
 
 module.exports = app;
