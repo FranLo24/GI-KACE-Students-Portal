@@ -9,10 +9,10 @@ app.listen(PORT, () => {
 });
 
 // Keeps the course catalogue in sync with the invoice site's product list.
-// No-op (skipped) when INVOICE_PRODUCTS_API_URL isn't configured yet — admins
-// can still use the manual "Sync from Invoice" button in Course Management
-// once it is, or wait for this interval.
-if (process.env.INVOICE_PRODUCTS_API_URL) {
+// No-op (skipped) when INVOICE_API_KEY isn't configured yet — admins can still
+// use the manual "Sync from Invoice" button in Course Management once it is,
+// or wait for this interval.
+if (process.env.INVOICE_API_KEY) {
   const intervalMinutes = Number(process.env.INVOICE_SYNC_INTERVAL_MINUTES) || 30;
 
   const runInvoiceSync = () => {

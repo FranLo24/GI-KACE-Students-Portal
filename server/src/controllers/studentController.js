@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { parsePhoneNumberFromString } = require('libphonenumber-js');
 const { parseIds } = require('../utils/parseIds');
 const { BUILTIN_FIELD_KEYS, REQUIRED_DB_COLUMNS } = require('../data/builtinFieldKeys');
 
@@ -18,8 +19,26 @@ function normalizeEmail(emailAddress = '') {
   return emailAddress.trim().toLowerCase();
 }
 
+// Stores Ghanaian numbers in E.164 (+233…) so the same phone typed as
+// "0241000008", "233241000008" or "+233 24 100 0008" always lands in the database
+// identically — otherwise the unique constraint and the duplicate check below
+// both treat those as three different people. It's also the format the e-invoice
+// site and Arkesel expect. A number libphonenumber can't make sense of is stored
+// as entered rather than mangled.
 function normalizePhone(phoneNumber = '') {
-  return phoneNumber.replace(/\D/g, '');
+  const parsed = parsePhoneNumberFromString(phoneNumber, 'GH');
+  return parsed?.isValid() ? parsed.number : phoneNumber.trim();
+}
+
+// Links a registration to its catalogue row, so invoicing can resolve the invoice
+// product id from the course's fees instead of re-matching course names later.
+// Null for a course title with no catalogue entry — that student just can't be
+// invoiced until their course exists and has been synced.
+async function resolveCourseId(courseTitle) {
+  if (!courseTitle) return null;
+
+  const course = await prisma.course.findFirst({ where: { title: courseTitle } });
+  return course?.id ?? null;
 }
 
 // Enabled fields, plus any NOT-NULL Student column even if an admin disabled
@@ -211,6 +230,7 @@ const registerStudent = async (req, res) => {
     const student = await prisma.student.create({
       data: {
         ...studentData,
+        courseId: await resolveCourseId(studentData.courseTitle),
         customFields: Object.keys(customFields).length ? customFields : undefined,
       },
     });
@@ -308,6 +328,9 @@ const updateStudent = async (req, res) => {
       where: { id },
       data: {
         ...studentData,
+        ...(studentData.courseTitle !== undefined
+          ? { courseId: await resolveCourseId(studentData.courseTitle) }
+          : {}),
         customFields: Object.keys(mergedCustomFields).length ? mergedCustomFields : null,
       },
     });

@@ -34,6 +34,10 @@ model Student {
   jobTitle          String?
   yearsOfExperience String?
 
+  // courseTitle/courseCategory stay as the plain-text record of what was chosen at
+  // registration; courseId is the live link used to resolve the invoice product.
+  courseId            Int?
+  course              Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
   courseTitle         String
   courseCategory      String
   courseCategoryOther String?
@@ -133,17 +137,27 @@ model Course {
   syncKey      String?     @unique
   updatedAt    DateTime    @updatedAt
   locationFees CourseFee[]
+  students     Student[]
 
   @@map("courses")
 }
 
 model CourseFee {
-  id        Int      @id @default(autoincrement())
-  courseId  Int
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  location  String
-  fee       Float
-  updatedAt DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  courseId          Int
+  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  location          String
+  fee               Float
+  // The invoice site's product id for this exact course+branch pair — the value
+  // POST /invoices/academic takes as course_id. One product there is always one
+  // (name, branch) pair, e.g. DBC is 69d66af4… at Accra and 54b4e48a… at Sunyani,
+  // which is why the id lives here and not on Course. Null means this location has
+  // no invoice counterpart, so it can't be invoiced.
+  invoiceProductId  String?  @unique
+  // branch_code as the invoice site spells it ("SUN", "ACCRA"), kept so a synced
+  // fee records which branch it came from without re-deriving it from location.
+  invoiceBranchCode String?
+  updatedAt         DateTime @updatedAt
 
   @@unique([courseId, location])
   @@map("course_fees")
