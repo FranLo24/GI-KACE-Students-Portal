@@ -98,8 +98,20 @@ async function createInvoiceForStudent(student) {
     cellphone: student.phoneNumber,
   });
 
+  // The invoice has already been created at this point, so a missing reference
+  // is logged rather than thrown — failing here would leave the student billed
+  // but not shortlisted.
+  const paymentReference = invoice?.payment_reference ?? null;
+  if (!paymentReference) {
+    console.warn(
+      `Invoice created for student ${student.id} but the response had no payment_reference. Response keys:`,
+      Object.keys(invoice || {})
+    );
+  }
+
   return {
     invoice,
+    paymentReference,
     matchedProduct: { id: fee.invoiceProductId, name: student.course.title, price: fee.fee },
   };
 }

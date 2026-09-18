@@ -95,10 +95,28 @@ async function createAcademicInvoice({ course_id, email, name, cellphone }) {
   return data;
 }
 
+// POST /invoices/status — looks up invoices by payment_reference. Returns an array
+// of { reference, name, status }; references the site doesn't recognise are simply
+// left out of the reply rather than reported as errors.
+async function fetchInvoiceStatuses(references) {
+  const { data } = await axios.post(
+    `${BASE_URL}/invoices/status`,
+    { references },
+    { headers: authHeaders(), timeout: 15000 }
+  );
+
+  if (!Array.isArray(data)) {
+    throw new Error('Invoice status API did not return an array — check INVOICE_API_BASE_URL and response shape.');
+  }
+
+  return data;
+}
+
 module.exports = {
   fetchAcademicCourses,
   fetchPrincipals,
   createStudentPrincipal,
   createAcademicInvoice,
+  fetchInvoiceStatuses,
   BASE_URL,
 };

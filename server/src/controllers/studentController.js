@@ -257,6 +257,7 @@ const getAllStudents = async (req, res) => {
       { emailAddress: { contains: q } },
       { phoneNumber: { contains: q } },
       { courseCategory: { contains: q } },
+      { paymentReference: { contains: q } },
     ];
   }
 

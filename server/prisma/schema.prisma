@@ -54,6 +54,13 @@ model Student {
   admissionSmsStatus   String?
   admissionEmailStatus String?
 
+  // payment_reference of the academic invoice created when the student was
+  // shortlisted — the reference the student pays against on the invoice site.
+  paymentReference String?
+  // Invoice status ("pending", "paid", …) as last returned by the invoice site's
+  // POST /invoices/status — refreshed only when an admin runs Verify Status.
+  paymentStatus    String?
+
   customFields Json?
 
   @@map("students")

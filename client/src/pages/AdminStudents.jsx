@@ -14,10 +14,12 @@ const STATIC_FIELD_LABELS = {
   createdAt: 'Registered Date',
   admissionStatus: 'Shortlist Status',
   admittedAt: 'Shortlisted On',
+  paymentReference: 'Payment Reference',
+  paymentStatus: 'Payment Status',
 };
 
 const STATIC_VIEW_SECTIONS = [
-  { title: 'Shortlist', fields: ['admissionStatus', 'admittedAt'] },
+  { title: 'Shortlist', fields: ['admissionStatus', 'admittedAt', 'paymentReference', 'paymentStatus'] },
 ];
 
 const ADMISSION_BADGE_STYLES = {
@@ -29,6 +31,24 @@ const ADMISSION_STATUS_LABELS = {
   pending: 'Pending',
   admitted: 'Shortlisted',
 };
+
+// Keyed by the status strings the invoice site's POST /invoices/status returns.
+// Anything not listed falls back to StatusBadge's default styling and label.
+const PAYMENT_BADGE_STYLES = {
+  paid: 'bg-emerald-100 text-emerald-700',
+  partial: 'bg-amber-100 text-amber-700',
+  pending: 'bg-slate-100 text-slate-600',
+  cancelled: 'bg-red-100 text-red-700',
+  expired: 'bg-red-100 text-red-700',
+};
+
+const PAYMENT_STATUS_LABELS = {
+  partial: 'Partially Paid',
+};
+
+function paymentStatusLabel(status) {
+  return PAYMENT_STATUS_LABELS[status] || String(status).replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
+}
 
 function StatusBadge({ value, styles, labels }) {
   return (
@@ -49,6 +69,9 @@ function formatFieldValue(field, value) {
   }
   if (field === 'admissionStatus') {
     return ADMISSION_STATUS_LABELS[value] || value;
+  }
+  if (field === 'paymentStatus') {
+    return paymentStatusLabel(value);
   }
   return value;
 }
@@ -417,7 +440,19 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
   );
 }
 
-function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, onView, onEdit, onDelete }) {
+function ActionsMenu({
+  student,
+  admitting,
+  verifying,
+  isOpen,
+  onToggle,
+  onClose,
+  onAdmit,
+  onVerify,
+  onView,
+  onEdit,
+  onDelete,
+}) {
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
   const [position, setPosition] = useState(null);
@@ -480,14 +515,26 @@ function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, o
             style={{ position: 'fixed', top: position.top, right: position.right }}
             className="z-50 w-40 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl"
           >
-            <button
-              type="button"
-              onClick={() => run(onAdmit)}
-              disabled={student.admissionStatus === 'admitted' || admitting}
-              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {admitting ? 'Shortlisting…' : student.admissionStatus === 'admitted' ? 'Shortlisted' : 'Shortlist'}
-            </button>
+            {student.admissionStatus !== 'admitted' && (
+              <button
+                type="button"
+                onClick={() => run(onAdmit)}
+                disabled={admitting}
+                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {admitting ? 'Shortlisting…' : 'Shortlist'}
+              </button>
+            )}
+            {student.paymentReference && (
+              <button
+                type="button"
+                onClick={() => run(onVerify)}
+                disabled={verifying}
+                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {verifying ? 'Verifying…' : 'Verify Status'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => run(onView)}
@@ -516,6 +563,175 @@ function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, o
   );
 }
 
+// A search is only checked against the invoice site when it could be a payment
+// reference — one token containing a digit — so plain name searches that find
+// nothing don't also trigger an invoice site lookup.
+function looksLikeReference(query) {
+  return /\d/.test(query) && !/\s/.test(query);
+}
+
+// Loose match used only to suggest a student for an invoice: every word of the
+// invoice's name appears in the student's name, ignoring case.
+function namesMatch(studentName, invoiceName) {
+  const studentWords = new Set(String(studentName).toLowerCase().split(/\s+/).filter(Boolean));
+  const invoiceWords = String(invoiceName || '').toLowerCase().split(/\s+/).filter(Boolean);
+  return invoiceWords.length > 0 && invoiceWords.every((word) => studentWords.has(word));
+}
+
+function InvoiceLookupNotice({ lookup, onLink }) {
+  if (lookup.loading) {
+    return <p className="mt-2 text-xs text-slate-400">Checking the invoice site for this payment reference…</p>;
+  }
+
+  if (lookup.error) {
+    return <p className="mt-2 text-xs text-red-600">Couldn't check the invoice site: {lookup.error}</p>;
+  }
+
+  if (!lookup.found) {
+    return (
+      <p className="mt-2 text-xs text-slate-400">
+        No invoice with this payment reference on the invoice site either. The invoice site only matches the full reference.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mx-auto mt-4 max-w-md rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-4 text-left">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Found on the invoice site</p>
+      <p className="mt-2 text-sm font-semibold text-slate-900">{lookup.name}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+        <span>{lookup.reference}</span>
+        <StatusBadge value={lookup.status} styles={PAYMENT_BADGE_STYLES} labels={PAYMENT_STATUS_LABELS} />
+      </div>
+      {lookup.linkedStudent ? (
+        <p className="mt-3 text-xs text-slate-500">
+          Linked to {lookup.linkedStudent.fullName}, who is hidden by your current filters.
+        </p>
+      ) : (
+        <>
+          <p className="mt-3 text-xs text-slate-500">This invoice isn't linked to any student in the portal yet.</p>
+          <button type="button" onClick={onLink} className="portal-button-primary mt-3 px-4 py-2 text-xs">
+            Link to a student
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Lets the admin attach an invoice found on the invoice site to a student who
+// has no payment reference yet. Students whose name matches the name on the
+// invoice are listed first, and preselected when there's exactly one.
+function LinkReferenceModal({ lookup, sections, onClose, onLinked, onUnauthorized }) {
+  const [candidates, setCandidates] = useState(null);
+  const [studentId, setStudentId] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get('/admin/students')
+      .then((res) => {
+        if (cancelled) return;
+
+        const unlinked = res.data
+          .filter((student) => !student.paymentReference)
+          .map((student) => {
+            const displayName = getStudentDisplayName(student, sections);
+            return { student, displayName, nameMatches: namesMatch(displayName, lookup.name) };
+          })
+          .sort((a, b) => Number(b.nameMatches) - Number(a.nameMatches));
+
+        setCandidates(unlinked);
+
+        const matches = unlinked.filter((candidate) => candidate.nameMatches);
+        if (matches.length === 1) setStudentId(String(matches[0].student.id));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error.response?.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        setError('Failed to load students. Please try again.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lookup.name, sections, onUnauthorized]);
+
+  async function handleLink() {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await api.put(`/admin/students/${studentId}/payment-reference`, { reference: lookup.reference });
+      onLinked(res.data.student);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setError(error.response?.data?.message || 'Failed to link the payment reference. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div className="glass-panel animate-rise-in w-full max-w-lg overflow-hidden p-6">
+        <h2 className="text-2xl font-semibold text-slate-900">Link Payment Reference</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Link <span className="font-semibold">{lookup.reference}</span> (invoiced to {lookup.name}) to a student who
+          doesn't have a payment reference yet.
+        </p>
+
+        <div className="mt-5">
+          <label className="mb-2 block text-sm font-medium text-slate-700">Student</label>
+          {candidates === null && !error ? (
+            <p className="text-sm text-slate-500">Loading students…</p>
+          ) : candidates?.length === 0 ? (
+            <p className="text-sm text-slate-500">Every student already has a payment reference.</p>
+          ) : (
+            candidates && (
+              <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="portal-select">
+                <option value="">Select a student</option>
+                {candidates.map(({ student, displayName, nameMatches }) => (
+                  <option key={student.id} value={student.id}>
+                    {displayName} — {student.emailAddress}
+                    {nameMatches ? ' (name matches invoice)' : ''}
+                  </option>
+                ))}
+              </select>
+            )
+          )}
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" onClick={onClose} className="portal-button-secondary">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleLink}
+            disabled={!studentId || saving}
+            className="portal-button-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? 'Linking…' : 'Link'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminStudents() {
   const handleUnauthorizedAccess = useUnauthorizedRedirect();
   const { courses } = useCourses();
@@ -528,6 +744,7 @@ export default function AdminStudents() {
   const [fetchError, setFetchError] = useState('');
   const [page, setPage] = useState(1);
   const [admittingId, setAdmittingId] = useState(null);
+  const [verifyingId, setVerifyingId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -544,6 +761,9 @@ export default function AdminStudents() {
   const [admitConfirm, setAdmitConfirm] = useState(null);
 
   const [successModal, setSuccessModal] = useState('');
+
+  const [invoiceLookup, setInvoiceLookup] = useState(null);
+  const [linkLookup, setLinkLookup] = useState(null);
 
   const [formSections, setFormSections] = useState([]);
 
@@ -602,6 +822,46 @@ export default function AdminStudents() {
     fetchStudents();
   }, [fetchStudents]);
 
+  // When a search finds no student, it may be a payment reference the portal has
+  // no record of (an invoice created directly on the invoice site), so ask the
+  // invoice site about it.
+  useEffect(() => {
+    const reference = debouncedSearch.trim();
+    if (loading || students.length > 0 || !looksLikeReference(reference)) {
+      setInvoiceLookup(null);
+      return;
+    }
+
+    let cancelled = false;
+    setInvoiceLookup({ loading: true });
+
+    api
+      .get('/admin/invoice-lookup', { params: { reference } })
+      .then((res) => {
+        if (!cancelled) setInvoiceLookup(res.data);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error.response?.status === 401) {
+          handleUnauthorizedAccess();
+          return;
+        }
+        setInvoiceLookup({ error: error.response?.data?.message || 'Please try again.' });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, students.length, debouncedSearch, handleUnauthorizedAccess]);
+
+  function handleReferenceLinked(student) {
+    setSuccessModal(
+      `Linked payment reference ${student.paymentReference} to ${getStudentDisplayName(student, formSections)}.`
+    );
+    setLinkLookup(null);
+    fetchStudents();
+  }
+
   function updateFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
@@ -655,6 +915,83 @@ export default function AdminStudents() {
       setFetchError(error.response?.data?.message || 'Failed to shortlist student. Please try again.');
     } finally {
       setAdmittingId(null);
+    }
+  }
+
+  // Merges verified statuses into the loaded list instead of refetching, which
+  // would jump back to page 1 and clear the selection.
+  function applyPaymentStatuses(results) {
+    const statusById = new Map(results.filter((result) => result.status).map((result) => [result.id, result.status]));
+    setStudents((prev) =>
+      prev.map((student) =>
+        statusById.has(student.id) ? { ...student, paymentStatus: statusById.get(student.id) } : student
+      )
+    );
+  }
+
+  async function handleVerify(student) {
+    setVerifyingId(student.id);
+    setFetchError('');
+    try {
+      const res = await api.post('/admin/students/verify-payment', { ids: [student.id] });
+      applyPaymentStatuses(res.data.results);
+
+      const name = getStudentDisplayName(student, formSections);
+      const status = res.data.results[0]?.status;
+      if (status) {
+        setSuccessModal(`Payment status for ${name} (${student.paymentReference}): ${paymentStatusLabel(status)}.`);
+      } else {
+        setFetchError(`Payment reference ${student.paymentReference} for ${name} was not found on the invoice site.`);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+
+      setFetchError(error.response?.data?.message || 'Failed to verify payment status. Please try again.');
+    } finally {
+      setVerifyingId(null);
+    }
+  }
+
+  async function handleBulkVerify() {
+    setBulkLoading(true);
+    setFetchError('');
+    try {
+      const res = await api.post('/admin/students/verify-payment', { ids: Array.from(selectedIds) });
+      const { results, skipped } = res.data;
+      applyPaymentStatuses(results);
+
+      const countByStatus = {};
+      results
+        .filter((result) => result.status)
+        .forEach((result) => {
+          countByStatus[result.status] = (countByStatus[result.status] || 0) + 1;
+        });
+      const found = Object.values(countByStatus).reduce((total, count) => total + count, 0);
+      const breakdown = Object.entries(countByStatus)
+        .map(([status, count]) => `${count} ${paymentStatusLabel(status)}`)
+        .join(', ');
+      const notFound = results.length - found;
+
+      setSuccessModal(
+        [
+          `Verified ${found} payment reference(s)` + (breakdown ? `: ${breakdown}.` : '.'),
+          notFound > 0 ? `${notFound} were not found on the invoice site.` : '',
+          skipped > 0 ? `${skipped} selected student(s) have no payment reference yet.` : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+      );
+    } catch (error) {
+      if (error.response?.status === 401) {
+        handleUnauthorizedAccess();
+        return;
+      }
+      setFetchError(error.response?.data?.message || 'Failed to verify payment statuses. Please try again.');
+    } finally {
+      setBulkLoading(false);
     }
   }
 
@@ -775,14 +1112,15 @@ export default function AdminStudents() {
           <div className="rounded-[24px] bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 text-white">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Search and review</p>
             <p className="mt-2 text-sm text-slate-200">
-              Search the full registration database by name, email, phone, or course category, then refine with filters.
+              Search the full registration database by name, email, phone, course category, or payment reference, then
+              refine with filters.
             </p>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by name, email, phone, or course category…"
+                placeholder="Search by name, email, phone, course category, or payment reference…"
                 className="w-full flex-1 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-blue-300 focus:ring-4 focus:ring-blue-200/20"
               />
               <button
@@ -891,6 +1229,14 @@ export default function AdminStudents() {
               </button>
               <button
                 type="button"
+                onClick={handleBulkVerify}
+                disabled={bulkLoading}
+                className="portal-button-secondary px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Verify Status
+              </button>
+              <button
+                type="button"
                 onClick={() => setBulkConfirm('delete')}
                 disabled={bulkLoading}
                 className="portal-button-secondary bg-red-50 text-red-700 hover:border-red-200 hover:bg-red-100 hover:text-red-700 px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
@@ -920,11 +1266,11 @@ export default function AdminStudents() {
                       aria-label="Select all students on this page"
                     />
                   </th>
-                  <th className="px-3 py-4 font-semibold">Name</th>
-                  <th className="px-3 py-4 font-semibold">Contact</th>
+                  <th className="px-3 py-4 font-semibold">Student</th>
                   <th className="px-3 py-4 font-semibold">Course Category</th>
                   <th className="px-3 py-4 font-semibold">Details</th>
                   <th className="px-3 py-4 font-semibold">Status</th>
+                  <th className="px-3 py-4 font-semibold">Payment Ref</th>
                   <th className="px-3 py-4 font-semibold">Registered</th>
                   <th className="px-3 py-4 font-semibold">Actions</th>
                 </tr>
@@ -938,6 +1284,7 @@ export default function AdminStudents() {
                   <tr>
                     <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                       {searchInput || activeFilterCount > 0 ? 'No students match your search or filters.' : 'No students registered yet.'}
+                      {invoiceLookup && <InvoiceLookupNotice lookup={invoiceLookup} onLink={() => setLinkLookup(invoiceLookup)} />}
                     </td>
                   </tr>
                 ) : (
@@ -954,16 +1301,18 @@ export default function AdminStudents() {
                           aria-label={`Select ${displayName}`}
                         />
                       </td>
-                      <td className="px-3 py-4 font-semibold text-slate-900">
-                        <p className="max-w-[130px] truncate" title={displayName}>
-                          {displayName}
-                        </p>
-                      </td>
                       <td className="px-3 py-4 text-slate-600">
-                        <p className="max-w-[150px] truncate" title={student.emailAddress}>
-                          {student.emailAddress}
-                        </p>
-                        <p className="text-xs text-slate-400">{student.phoneNumber}</p>
+                        <div className="flex max-w-[200px] flex-col gap-0.5">
+                          <p className="truncate font-semibold text-slate-900" title={displayName}>
+                            {displayName}
+                          </p>
+                          <p className="truncate text-xs" title={`Email: ${student.emailAddress}`}>
+                            <span className="font-medium text-slate-500">Email:</span> {student.emailAddress}
+                          </p>
+                          <p className="truncate text-xs" title={`Phone: ${student.phoneNumber}`}>
+                            <span className="font-medium text-slate-500">Phone:</span> {student.phoneNumber}
+                          </p>
+                        </div>
                       </td>
                       <td className="px-3 py-4 text-slate-600">
                         <p className="max-w-[130px] truncate" title={student.courseCategory}>
@@ -989,15 +1338,35 @@ export default function AdminStudents() {
                           <StatusBadge value={student.admissionStatus} styles={ADMISSION_BADGE_STYLES} labels={ADMISSION_STATUS_LABELS} />
                         </div>
                       </td>
+                      <td className="px-3 py-4 text-slate-600">
+                        {student.paymentReference ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <p className="max-w-[140px] truncate text-xs font-medium" title={student.paymentReference}>
+                              {student.paymentReference}
+                            </p>
+                            {student.paymentStatus && (
+                              <StatusBadge
+                                value={student.paymentStatus}
+                                styles={PAYMENT_BADGE_STYLES}
+                                labels={PAYMENT_STATUS_LABELS}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-4 text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</td>
                       <td className="px-3 py-4">
                         <ActionsMenu
                           student={student}
                           admitting={admittingId === student.id}
+                          verifying={verifyingId === student.id}
                           isOpen={openMenuId === student.id}
                           onToggle={() => setOpenMenuId((prev) => (prev === student.id ? null : student.id))}
                           onClose={() => setOpenMenuId(null)}
                           onAdmit={() => setAdmitConfirm(student)}
+                          onVerify={() => handleVerify(student)}
                           onView={() => setViewStudent(student)}
                           onEdit={() => setEditStudent(student)}
                           onDelete={() => setDeleteStudent(student)}
@@ -1110,6 +1479,16 @@ export default function AdminStudents() {
           showCancel
           onClose={() => setBulkConfirm(null)}
           onConfirm={bulkLoading ? undefined : handleBulkDelete}
+        />
+      )}
+
+      {linkLookup && (
+        <LinkReferenceModal
+          lookup={linkLookup}
+          sections={formSections}
+          onClose={() => setLinkLookup(null)}
+          onLinked={handleReferenceLinked}
+          onUnauthorized={handleUnauthorizedAccess}
         />
       )}
 

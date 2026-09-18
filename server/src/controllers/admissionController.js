@@ -8,10 +8,12 @@ const WITH_COURSE_FEES = { course: { include: { locationFees: true } } };
 
 // Shortlisting a student bills them: it creates their academic invoice on the
 // e-invoice site and, only once that succeeds, marks them shortlisted (stored as
-// admissionStatus "admitted"). No SMS or email is sent. Because an already
-// shortlisted student is skipped, nobody gets invoiced twice.
+// admissionStatus "admitted") and records the invoice's payment reference. No SMS
+// or email is sent. Because an already shortlisted student is skipped, nobody gets
+// invoiced twice.
 //
-// Resolves to { ok: true, invoice, matchedProduct } or { ok: false, status, message }.
+// Resolves to { ok: true, invoice, paymentReference, matchedProduct } or
+// { ok: false, status, message }.
 async function shortlistAndInvoice(student) {
   let result;
   try {
@@ -23,7 +25,7 @@ async function shortlistAndInvoice(student) {
   try {
     await prisma.student.update({
       where: { id: student.id },
-      data: { admissionStatus: 'admitted', admittedAt: new Date() },
+      data: { admissionStatus: 'admitted', admittedAt: new Date(), paymentReference: result.paymentReference },
     });
   } catch (error) {
     console.error('Shortlist status save error (invoice already created):', error);
@@ -54,7 +56,12 @@ const admitStudent = async (req, res) => {
     const outcome = await shortlistAndInvoice(student);
     if (!outcome.ok) return res.status(outcome.status).json({ message: outcome.message });
 
-    res.json({ message: 'Student shortlisted', invoice: outcome.invoice, matchedProduct: outcome.matchedProduct });
+    res.json({
+      message: 'Student shortlisted',
+      invoice: outcome.invoice,
+      paymentReference: outcome.paymentReference,
+      matchedProduct: outcome.matchedProduct,
+    });
   } catch (error) {
     console.error('Shortlist student error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -81,7 +88,12 @@ const bulkAdmitStudents = async (req, res) => {
       const outcome = await shortlistAndInvoice(student);
       results.push(
         outcome.ok
-          ? { id: student.id, status: 'shortlisted', matchedProduct: outcome.matchedProduct }
+          ? {
+              id: student.id,
+              status: 'shortlisted',
+              paymentReference: outcome.paymentReference,
+              matchedProduct: outcome.matchedProduct,
+            }
           : { id: student.id, status: 'failed', message: outcome.message }
       );
     }
