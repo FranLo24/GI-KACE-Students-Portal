@@ -12,14 +12,12 @@ const PAGE_SIZE = 10;
 
 const STATIC_FIELD_LABELS = {
   createdAt: 'Registered Date',
-  admissionStatus: 'Admission Status',
-  admittedAt: 'Admitted On',
-  admissionSmsStatus: 'Admission SMS',
-  admissionEmailStatus: 'Admission Email',
+  admissionStatus: 'Shortlist Status',
+  admittedAt: 'Shortlisted On',
 };
 
 const STATIC_VIEW_SECTIONS = [
-  { title: 'Admission', fields: ['admissionStatus', 'admittedAt', 'admissionSmsStatus', 'admissionEmailStatus'] },
+  { title: 'Shortlist', fields: ['admissionStatus', 'admittedAt'] },
 ];
 
 const ADMISSION_BADGE_STYLES = {
@@ -49,7 +47,19 @@ function formatFieldValue(field, value) {
   if (field === 'createdAt' || field === 'admittedAt') {
     return new Date(value).toLocaleDateString();
   }
+  if (field === 'admissionStatus') {
+    return ADMISSION_STATUS_LABELS[value] || value;
+  }
   return value;
+}
+
+// Shortlisting creates the student's invoice, so the confirmation names the
+// invoice product that was billed.
+function shortlistedMessage(name, matchedProduct) {
+  return (
+    `${name} has been shortlisted and invoiced` +
+    (matchedProduct ? ` for "${matchedProduct.name}" (GHS ${matchedProduct.price}).` : '.')
+  );
 }
 
 const COMPUTER_LITERACY_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
@@ -274,7 +284,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
     try {
       const res = await api.post('/admin/students/' + student.id + '/admit');
       setForm((prev) => ({ ...prev, admissionStatus: 'admitted' }));
-      setAdmitResult({ ok: true, smsStatus: res.data.smsStatus, emailStatus: res.data.emailStatus });
+      setAdmitResult({ ok: true, message: shortlistedMessage(getStudentDisplayName(student, sections), res.data.matchedProduct) });
       onRefresh();
     } catch (error) {
       if (error.response?.status === 401) {
@@ -282,7 +292,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
         return;
       }
 
-      setAdmitResult({ ok: false, message: error.response?.data?.message || 'Failed to admit student.' });
+      setAdmitResult({ ok: false, message: error.response?.data?.message || 'Failed to shortlist student.' });
     } finally {
       setAdmitLoading(false);
     }
@@ -327,11 +337,13 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
               })}
 
               <section className="portal-panel p-5">
-                <h3 className="text-lg font-semibold text-slate-900">Admission</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Shortlist</h3>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Admission Status</label>
-                    <p className="portal-input bg-slate-50 capitalize text-slate-600">{form.admissionStatus}</p>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">Shortlist Status</label>
+                    <p className="portal-input bg-slate-50 text-slate-600">
+                      {ADMISSION_STATUS_LABELS[form.admissionStatus] || form.admissionStatus}
+                    </p>
                   </div>
                   <div className="flex items-end">
                     <button
@@ -341,10 +353,10 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
                       className="portal-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {admitLoading
-                        ? 'Admitting…'
+                        ? 'Shortlisting…'
                         : form.admissionStatus === 'admitted'
-                        ? 'Already Admitted'
-                        : 'Admit Student'}
+                        ? 'Shortlisted'
+                        : 'Shortlist'}
                     </button>
                   </div>
                 </div>
@@ -353,16 +365,12 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
                   <div
                     className={
                       'mt-4 rounded-2xl border px-4 py-3 text-sm ' +
-                      (admitResult.ok && admitResult.smsStatus === 'sent' && admitResult.emailStatus === 'sent'
+                      (admitResult.ok
                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : admitResult.ok
-                        ? 'border-amber-200 bg-amber-50 text-amber-700'
                         : 'border-red-200 bg-red-50 text-red-700')
                     }
                   >
-                    {admitResult.ok
-                      ? `Student admitted. SMS: ${admitResult.smsStatus}, Email: ${admitResult.emailStatus}.`
-                      : admitResult.message}
+                    {admitResult.message}
                   </div>
                 )}
               </section>
@@ -389,7 +397,10 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
       {admitConfirmOpen && (
         <Modal
           title="Shortlist Student"
-          message={`Admit ${getStudentDisplayName(student, sections)}? They will receive an admission SMS and email.`}
+          message={
+            `Shortlist ${getStudentDisplayName(student, sections)}? This creates an academic invoice for ` +
+            `${student.courseTitle} on the e-invoice site immediately.`
+          }
           showCancel
           onClose={() => setAdmitConfirmOpen(false)}
           onConfirm={
@@ -406,7 +417,7 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
   );
 }
 
-function ActionsMenu({ student, admitting, invoicing, isOpen, onToggle, onClose, onAdmit, onInvoice, onView, onEdit, onDelete }) {
+function ActionsMenu({ student, admitting, isOpen, onToggle, onClose, onAdmit, onView, onEdit, onDelete }) {
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
   const [position, setPosition] = useState(null);
@@ -479,14 +490,6 @@ function ActionsMenu({ student, admitting, invoicing, isOpen, onToggle, onClose,
             </button>
             <button
               type="button"
-              onClick={() => run(onInvoice)}
-              disabled={invoicing}
-              className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {invoicing ? 'Creating Invoice…' : 'Create Invoice'}
-            </button>
-            <button
-              type="button"
               onClick={() => run(onView)}
               className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
@@ -525,7 +528,6 @@ export default function AdminStudents() {
   const [fetchError, setFetchError] = useState('');
   const [page, setPage] = useState(1);
   const [admittingId, setAdmittingId] = useState(null);
-  const [invoicingId, setInvoicingId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -540,7 +542,6 @@ export default function AdminStudents() {
   const [deleteStudent, setDeleteStudent] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [admitConfirm, setAdmitConfirm] = useState(null);
-  const [invoiceConfirm, setInvoiceConfirm] = useState(null);
 
   const [successModal, setSuccessModal] = useState('');
 
@@ -641,7 +642,7 @@ export default function AdminStudents() {
     try {
       const res = await api.post('/admin/students/' + student.id + '/admit');
       setAdmitConfirm(null);
-      setSuccessModal(`Student admitted. SMS: ${res.data.smsStatus}, Email: ${res.data.emailStatus}.`);
+      setSuccessModal(shortlistedMessage(getStudentDisplayName(student, formSections), res.data.matchedProduct));
       fetchStudents();
     } catch (error) {
       setAdmitConfirm(null);
@@ -651,33 +652,9 @@ export default function AdminStudents() {
         return;
       }
 
-      setFetchError('Failed to admit student. Please try again.');
+      setFetchError(error.response?.data?.message || 'Failed to shortlist student. Please try again.');
     } finally {
       setAdmittingId(null);
-    }
-  }
-
-  async function handleCreateInvoice(student) {
-    setInvoicingId(student.id);
-    try {
-      const res = await api.post('/admin/students/' + student.id + '/invoice');
-      setInvoiceConfirm(null);
-      const { matchedProduct } = res.data;
-      setSuccessModal(
-        `Invoice created for ${getStudentDisplayName(student, formSections)}` +
-          (matchedProduct ? ` — matched to "${matchedProduct.name}" (GHS ${matchedProduct.price}).` : '.')
-      );
-    } catch (error) {
-      setInvoiceConfirm(null);
-
-      if (error.response?.status === 401) {
-        handleUnauthorizedAccess();
-        return;
-      }
-
-      setFetchError(error.response?.data?.message || 'Failed to create invoice. Please try again.');
-    } finally {
-      setInvoicingId(null);
     }
   }
 
@@ -717,10 +694,31 @@ export default function AdminStudents() {
     try {
       const res = await api.post('/admin/students/bulk-admit', { ids: Array.from(selectedIds) });
       setBulkConfirm(null);
-      setSuccessModal(
-        `Admitted ${res.data.admitted} student(s).` +
-          (res.data.alreadyAdmitted > 0 ? ` ${res.data.alreadyAdmitted} were already admitted.` : '')
-      );
+
+      const summary =
+        `Shortlisted and invoiced ${res.data.shortlisted} student(s).` +
+        (res.data.alreadyShortlisted > 0 ? ` ${res.data.alreadyShortlisted} were already shortlisted.` : '');
+
+      // Group failures by reason so one broken course or invoice-site error reads
+      // as a single line rather than repeating for every student it affected.
+      const failuresByReason = {};
+      res.data.results
+        .filter((result) => result.status === 'failed')
+        .forEach((result) => {
+          const student = students.find((entry) => entry.id === result.id);
+          const name = student ? getStudentDisplayName(student, formSections) : `#${result.id}`;
+          (failuresByReason[result.message] ||= []).push(name);
+        });
+
+      if (res.data.failed > 0) {
+        const reasons = Object.entries(failuresByReason)
+          .map(([reason, names]) => `${names.join(', ')}: ${reason}`)
+          .join(' ');
+        setFetchError(`${summary} ${res.data.failed} could not be shortlisted. ${reasons}`);
+      } else {
+        setSuccessModal(summary);
+      }
+
       fetchStudents();
     } catch (error) {
       setBulkConfirm(null);
@@ -728,7 +726,7 @@ export default function AdminStudents() {
         handleUnauthorizedAccess();
         return;
       }
-      setFetchError('Failed to admit the selected students. Please try again.');
+      setFetchError('Failed to shortlist the selected students. Please try again.');
     } finally {
       setBulkLoading(false);
     }
@@ -814,7 +812,7 @@ export default function AdminStudents() {
               </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div>
-                  <label className="mb-2 block text-xs font-medium text-slate-600">Admission</label>
+                  <label className="mb-2 block text-xs font-medium text-slate-600">Shortlist status</label>
                   <select
                     value={filters.admissionStatus}
                     onChange={(e) => updateFilter('admissionStatus', e.target.value)}
@@ -889,7 +887,7 @@ export default function AdminStudents() {
                 disabled={bulkLoading}
                 className="portal-button-secondary px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Admit Selected
+                Shortlist Selected
               </button>
               <button
                 type="button"
@@ -996,12 +994,10 @@ export default function AdminStudents() {
                         <ActionsMenu
                           student={student}
                           admitting={admittingId === student.id}
-                          invoicing={invoicingId === student.id}
                           isOpen={openMenuId === student.id}
                           onToggle={() => setOpenMenuId((prev) => (prev === student.id ? null : student.id))}
                           onClose={() => setOpenMenuId(null)}
                           onAdmit={() => setAdmitConfirm(student)}
-                          onInvoice={() => setInvoiceConfirm(student)}
                           onView={() => setViewStudent(student)}
                           onEdit={() => setEditStudent(student)}
                           onDelete={() => setDeleteStudent(student)}
@@ -1085,9 +1081,8 @@ export default function AdminStudents() {
         <Modal
           title="Shortlist Student"
           message={
-            'Admit ' +
-            getStudentDisplayName(admitConfirm, formSections) +
-            '? They will receive an admission SMS and email.'
+            `Shortlist ${getStudentDisplayName(admitConfirm, formSections)}? This creates an academic invoice for ` +
+            `${admitConfirm.courseTitle} on the e-invoice site immediately.`
           }
           showCancel
           onClose={() => setAdmitConfirm(null)}
@@ -1095,23 +1090,13 @@ export default function AdminStudents() {
         />
       )}
 
-      {invoiceConfirm && (
-        <Modal
-          title="Create Invoice"
-          message={
-            `Create an academic invoice for ${getStudentDisplayName(invoiceConfirm, formSections)} ` +
-            `(${invoiceConfirm.courseTitle})? This creates the invoice on the e-invoice site immediately.`
-          }
-          showCancel
-          onClose={() => setInvoiceConfirm(null)}
-          onConfirm={invoicingId === invoiceConfirm.id ? undefined : () => handleCreateInvoice(invoiceConfirm)}
-        />
-      )}
-
       {bulkConfirm === 'admit' && (
         <Modal
-          title="Admit Selected Students"
-          message={`Admit ${selectedIds.size} student(s)? Each will receive an admission SMS and email.`}
+          title="Shortlist Selected Students"
+          message={
+            `Shortlist ${selectedIds.size} student(s)? An academic invoice is created on the e-invoice site for ` +
+            'each one immediately. Students who are already shortlisted are skipped.'
+          }
           showCancel
           onClose={() => setBulkConfirm(null)}
           onConfirm={bulkLoading ? undefined : handleBulkAdmit}

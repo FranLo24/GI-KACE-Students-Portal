@@ -20,17 +20,4 @@ async function sendMail({ to, subject, html, text }) {
   });
 }
 
-async function sendAdmissionEmail(student) {
-  await sendMail({
-    to: student.emailAddress,
-    subject: 'You have been admitted — GI-KACE',
-    html: `
-      <p>Congratulations ${student.fullName},</p>
-      <p>You have been admitted into <strong>${student.courseTitle}</strong> at GI-KACE.</p>
-      <p>We look forward to having you in class. Further details will follow separately.</p>
-    `,
-    text: `Congratulations ${student.fullName}, you have been admitted into ${student.courseTitle} at GI-KACE.`,
-  });
-}
-
-module.exports = { sendMail, sendAdmissionEmail };
+module.exports = { sendMail };
