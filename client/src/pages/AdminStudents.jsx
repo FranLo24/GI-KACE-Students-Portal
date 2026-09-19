@@ -4,8 +4,15 @@ import Modal from '../components/Modal';
 import api from '../api/axios';
 import { useCourses } from '../hooks/useCourses';
 import { useCourseLocations } from '../hooks/useCourseLocations';
+import { useCourseLevels } from '../hooks/useCourseLevels';
 import { useFormConfig } from '../hooks/useFormConfig';
-import { getPersonalNameFields, getStudentDisplayName, isFieldVisible, sortByOrder } from '../utils/dynamicForm';
+import {
+  getDefaultValues,
+  getPersonalNameFields,
+  getStudentDisplayName,
+  isFieldVisible,
+  sortByOrder,
+} from '../utils/dynamicForm';
 import { useUnauthorizedRedirect } from '../hooks/useUnauthorizedRedirect';
 
 const PAGE_SIZE = 10;
@@ -190,7 +197,33 @@ function ViewModal({ student, sections, onClose }) {
   );
 }
 
-function DynamicEditField({ field, value, onChange }) {
+// Each course category belongs to a computer literacy level (Settings → Course
+// Levels), and the registration form only offers courses for the level the
+// student picked. The editor follows the same rule. "Other" stays available, as
+// does whatever the student already has, so an existing choice is never dropped
+// from the list without the admin seeing it.
+function courseCategoryOptions(field, levelByCategory, literacy, currentValue) {
+  const options = field.options || [];
+  if (!literacy) return options;
+
+  const allowed = options.filter((option) => option === 'Other' || levelByCategory.get(option) === literacy);
+  if (currentValue && !allowed.includes(currentValue)) allowed.push(currentValue);
+  return allowed;
+}
+
+// Each category in the catalogue holds a single course, so choosing a category
+// settles the course title too. A category with no course, or more than one,
+// leaves the title as it was for the admin to fill in, and "Other" clears it so a
+// custom programme can be typed — the same as picking a custom course on the
+// public registration form.
+function titleForCategory(category, titlesByCategory, currentTitle) {
+  if (category === 'Other') return '';
+
+  const titles = titlesByCategory.get(category) || [];
+  return titles.length === 1 ? titles[0] : currentTitle;
+}
+
+function DynamicEditField({ field, value, onChange, hint }) {
   const label = field.label;
   const required = field.required;
 
@@ -223,6 +256,7 @@ function DynamicEditField({ field, value, onChange }) {
             </option>
           ))}
         </select>
+        {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
       </div>
     );
   }
@@ -255,11 +289,12 @@ function DynamicEditField({ field, value, onChange }) {
         required={required}
         className="portal-input"
       />
+      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }
 
-function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefresh }) {
+function EditModal({ student, sections, levelByCategory, titlesByCategory, onClose, onSaved, onUnauthorized, onRefresh }) {
   const [form, setForm] = useState({ ...student, customFields: student.customFields || {} });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -276,7 +311,13 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
 
   function writeValue(field, value) {
     if (field.isBuiltIn) {
-      setForm((prev) => ({ ...prev, [field.key]: value }));
+      setForm((prev) => ({
+        ...prev,
+        [field.key]: value,
+        ...(field.key === 'courseCategory'
+          ? { courseTitle: titleForCategory(value, titlesByCategory, prev.courseTitle) }
+          : {}),
+      }));
     } else {
       setForm((prev) => ({ ...prev, customFields: { ...(prev.customFields || {}), [field.key]: value } }));
     }
@@ -287,7 +328,10 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
     setError('');
     setLoading(true);
     try {
-      await api.put('/admin/students/' + student.id, form);
+      // Sent flattened: the API reads every configured field from the top level
+      // of the body, so custom fields left nested under customFields would come
+      // through as missing and fail their "is required" check.
+      await api.put('/admin/students/' + student.id, formValues);
       onSaved();
     } catch (error) {
       if (error.response?.status === 401) {
@@ -345,12 +389,32 @@ function EditModal({ student, sections, onClose, onSaved, onUnauthorized, onRefr
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       {fields.map((field) => {
                         if (!isFieldVisible(field, formValues)) return null;
+
+                        const isCourseCategory = field.key === 'courseCategory';
+                        const literacy = form.computerLiteracy;
+                        const autoFilledTitle =
+                          field.key === 'courseTitle' && (titlesByCategory.get(form.courseCategory) || []).length === 1;
+
                         return (
                           <DynamicEditField
                             key={field.key}
-                            field={field}
+                            field={
+                              isCourseCategory
+                                ? {
+                                    ...field,
+                                    options: courseCategoryOptions(field, levelByCategory, literacy, student.courseCategory),
+                                  }
+                                : field
+                            }
                             value={readValue(field)}
                             onChange={(value) => writeValue(field, value)}
+                            hint={
+                              isCourseCategory && literacy
+                                ? `Only categories for the ${literacy} level are listed.`
+                                : autoFilledTitle
+                                ? 'Filled in from the selected course category.'
+                                : undefined
+                            }
                           />
                         );
                       })}
@@ -515,7 +579,9 @@ function ActionsMenu({
             style={{ position: 'fixed', top: position.top, right: position.right }}
             className="z-50 w-40 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl"
           >
-            {student.admissionStatus !== 'admitted' && (
+            {/* A student with a payment reference already has an invoice, so
+                shortlisting them again would bill them twice. */}
+            {student.admissionStatus !== 'admitted' && !student.paymentReference && (
               <button
                 type="button"
                 onClick={() => run(onAdmit)}
@@ -570,15 +636,11 @@ function looksLikeReference(query) {
   return /\d/.test(query) && !/\s/.test(query);
 }
 
-// Loose match used only to suggest a student for an invoice: every word of the
-// invoice's name appears in the student's name, ignoring case.
-function namesMatch(studentName, invoiceName) {
-  const studentWords = new Set(String(studentName).toLowerCase().split(/\s+/).filter(Boolean));
-  const invoiceWords = String(invoiceName || '').toLowerCase().split(/\s+/).filter(Boolean);
-  return invoiceWords.length > 0 && invoiceWords.every((word) => studentWords.has(word));
-}
+// How many matches the link search shows at once — it's a picker, not a list to
+// browse, so a long list means the search needs narrowing instead.
+const LINK_SEARCH_LIMIT = 8;
 
-function InvoiceLookupNotice({ lookup, onLink }) {
+function InvoiceLookupNotice({ lookup, onLink, onCreate }) {
   if (lookup.loading) {
     return <p className="mt-2 text-xs text-slate-400">Checking the invoice site for this payment reference…</p>;
   }
@@ -610,64 +672,75 @@ function InvoiceLookupNotice({ lookup, onLink }) {
       ) : (
         <>
           <p className="mt-3 text-xs text-slate-500">This invoice isn't linked to any student in the portal yet.</p>
-          <button type="button" onClick={onLink} className="portal-button-primary mt-3 px-4 py-2 text-xs">
-            Link to a student
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={onLink} className="portal-button-primary px-4 py-2 text-xs">
+              Link to a student
+            </button>
+            <button type="button" onClick={onCreate} className="portal-button-secondary px-4 py-2 text-xs">
+              Create new student
+            </button>
+          </div>
         </>
       )}
     </div>
   );
 }
 
-// Lets the admin attach an invoice found on the invoice site to a student who
-// has no payment reference yet. Students whose name matches the name on the
-// invoice are listed first, and preselected when there's exactly one.
-function LinkReferenceModal({ lookup, sections, onClose, onLinked, onUnauthorized }) {
-  const [candidates, setCandidates] = useState(null);
-  const [studentId, setStudentId] = useState('');
+// Lets the admin attach an invoice found on the invoice site to a student who has
+// no payment reference yet. The student is found by searching rather than picked
+// from the whole roll; the search starts from the name on the invoice.
+function LinkReferenceModal({ lookup, sections, onClose, onLinked, onCreateNew, onUnauthorized }) {
+  const [searchInput, setSearchInput] = useState(lookup.name || '');
+  const [results, setResults] = useState([]);
+  const [alreadyLinkedCount, setAlreadyLinkedCount] = useState(0);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const debouncedSearch = useDebounce(searchInput, 300);
+  const query = debouncedSearch.trim();
+
   useEffect(() => {
+    if (!query) {
+      setResults([]);
+      setAlreadyLinkedCount(0);
+      setSearching(false);
+      return;
+    }
+
     let cancelled = false;
+    setSearching(true);
 
     api
-      .get('/admin/students')
+      .get('/admin/students', { params: { q: query } })
       .then((res) => {
         if (cancelled) return;
-
-        const unlinked = res.data
-          .filter((student) => !student.paymentReference)
-          .map((student) => {
-            const displayName = getStudentDisplayName(student, sections);
-            return { student, displayName, nameMatches: namesMatch(displayName, lookup.name) };
-          })
-          .sort((a, b) => Number(b.nameMatches) - Number(a.nameMatches));
-
-        setCandidates(unlinked);
-
-        const matches = unlinked.filter((candidate) => candidate.nameMatches);
-        if (matches.length === 1) setStudentId(String(matches[0].student.id));
+        const unlinked = res.data.filter((student) => !student.paymentReference);
+        setResults(unlinked.slice(0, LINK_SEARCH_LIMIT));
+        setAlreadyLinkedCount(res.data.length - unlinked.length);
+        setSearching(false);
       })
       .catch((error) => {
         if (cancelled) return;
+        setSearching(false);
         if (error.response?.status === 401) {
           onUnauthorized();
           return;
         }
-        setError('Failed to load students. Please try again.');
+        setError('Failed to search students. Please try again.');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [lookup.name, sections, onUnauthorized]);
+  }, [query, onUnauthorized]);
 
   async function handleLink() {
     setSaving(true);
     setError('');
     try {
-      const res = await api.put(`/admin/students/${studentId}/payment-reference`, { reference: lookup.reference });
+      const res = await api.put(`/admin/students/${selected.id}/payment-reference`, { reference: lookup.reference });
       onLinked(res.data.student);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -690,24 +763,59 @@ function LinkReferenceModal({ lookup, sections, onClose, onLinked, onUnauthorize
         </p>
 
         <div className="mt-5">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Student</label>
-          {candidates === null && !error ? (
-            <p className="text-sm text-slate-500">Loading students…</p>
-          ) : candidates?.length === 0 ? (
-            <p className="text-sm text-slate-500">Every student already has a payment reference.</p>
-          ) : (
-            candidates && (
-              <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="portal-select">
-                <option value="">Select a student</option>
-                {candidates.map(({ student, displayName, nameMatches }) => (
-                  <option key={student.id} value={student.id}>
-                    {displayName} — {student.emailAddress}
-                    {nameMatches ? ' (name matches invoice)' : ''}
-                  </option>
-                ))}
-              </select>
-            )
-          )}
+          <label className="mb-2 block text-sm font-medium text-slate-700">Search for the student</label>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setSelected(null);
+            }}
+            placeholder="Search by name, email, or phone…"
+            className="portal-input"
+          />
+
+          <div className="mt-3 max-h-64 overflow-y-auto">
+            {!query ? (
+              <p className="text-sm text-slate-500">Type a name, email, or phone number to find the student.</p>
+            ) : searching ? (
+              <p className="text-sm text-slate-500">Searching…</p>
+            ) : results.length === 0 ? (
+              <div className="text-sm text-slate-500">
+                <p>
+                  No student without a payment reference matches "{query}".
+                  {alreadyLinkedCount > 0 && ' Students matching this search already have one.'}
+                </p>
+                <button type="button" onClick={onCreateNew} className="portal-button-secondary mt-3 px-4 py-2 text-xs">
+                  Create new student instead
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {results.map((student) => {
+                  const isSelected = selected?.id === student.id;
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={() => setSelected(student)}
+                      className={
+                        'rounded-2xl border px-4 py-3 text-left transition ' +
+                        (isSelected
+                          ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-200'
+                          : 'border-slate-100 bg-slate-50/80 hover:border-blue-200 hover:bg-blue-50/40')
+                      }
+                    >
+                      <p className="text-sm font-semibold text-slate-900">{getStudentDisplayName(student, sections)}</p>
+                      <p className="text-xs text-slate-500">
+                        {student.emailAddress} · {student.phoneNumber}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -721,7 +829,7 @@ function LinkReferenceModal({ lookup, sections, onClose, onLinked, onUnauthorize
           <button
             type="button"
             onClick={handleLink}
-            disabled={!studentId || saving}
+            disabled={!selected || saving}
             className="portal-button-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? 'Linking…' : 'Link'}
@@ -732,10 +840,155 @@ function LinkReferenceModal({ lookup, sections, onClose, onLinked, onUnauthorize
   );
 }
 
+// Registers a student for an invoice that exists on the invoice site but has no
+// record here, then links the reference to the new student. Only the name is
+// known from the invoice, so the rest of the registration form has to be filled
+// in as usual.
+function CreateStudentModal({ lookup, sections, levelByCategory, titlesByCategory, onClose, onCreated, onUnauthorized }) {
+  const [values, setValues] = useState(() => ({ ...getDefaultValues(sections), fullName: lookup.name || '' }));
+  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    setFieldErrors({});
+
+    let student;
+    try {
+      const res = await api.post('/register', values);
+      student = res.data.student;
+    } catch (error) {
+      setSaving(false);
+      if (error.response?.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setError(error.response?.data?.message || 'Failed to create the student. Please try again.');
+      setFieldErrors(error.response?.data?.fieldErrors || {});
+      return;
+    }
+
+    // The student now exists, so a failure here is reported as a warning rather
+    // than an error — re-submitting would only fail on the duplicate email.
+    try {
+      const res = await api.put(`/admin/students/${student.id}/payment-reference`, { reference: lookup.reference });
+      onCreated(res.data.student);
+    } catch (error) {
+      onCreated(
+        student,
+        `${getStudentDisplayName(student, sections)} was created, but linking ${lookup.reference} failed: ` +
+          `${error.response?.data?.message || 'please try again'}. Search for the reference again to link it.`
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div className="glass-panel animate-rise-in w-full max-w-5xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/60 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">New registration</p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-900">Create Student</h2>
+          </div>
+          <button type="button" onClick={onClose} className="portal-button-secondary px-4 py-2">
+            Cancel
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="max-h-[72vh] overflow-y-auto px-6 py-6">
+            <div className="grid gap-5">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Payment reference <span className="font-semibold">{lookup.reference}</span> (invoiced to {lookup.name})
+                is linked to this student once they're created.
+              </div>
+
+              {sections.map((section) => (
+                <section key={section.key} className="portal-panel p-5">
+                  <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {sortByOrder(section.fields || []).map((field) => {
+                      if (!isFieldVisible(field, values)) return null;
+
+                      const isCourseCategory = field.key === 'courseCategory';
+                      const literacy = values.computerLiteracy;
+
+                      return (
+                        <DynamicEditField
+                          key={field.key}
+                          field={
+                            isCourseCategory
+                              ? { ...field, options: courseCategoryOptions(field, levelByCategory, literacy, '') }
+                              : field
+                          }
+                          value={values[field.key]}
+                          onChange={(value) =>
+                            setValues((prev) => ({
+                              ...prev,
+                              [field.key]: value,
+                              ...(isCourseCategory
+                                ? { courseTitle: titleForCategory(value, titlesByCategory, prev.courseTitle) }
+                                : {}),
+                            }))
+                          }
+                          hint={
+                            isCourseCategory && literacy
+                              ? `Only categories for the ${literacy} level are listed.`
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+
+              {error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <p>{error}</p>
+                  {Object.keys(fieldErrors).length > 1 && (
+                    <ul className="mt-2 list-inside list-disc">
+                      {Object.entries(fieldErrors).map(([key, message]) => (
+                        <li key={key}>{message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-3 border-t border-white/60 px-6 py-5">
+            <button type="button" onClick={onClose} className="portal-button-secondary">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="portal-button-primary">
+              {saving ? 'Creating…' : 'Create and Link'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminStudents() {
   const handleUnauthorizedAccess = useUnauthorizedRedirect();
   const { courses } = useCourses();
   const locations = useCourseLocations();
+  const levelByCategory = useCourseLevels();
+
+  // Course titles available per category, used to fill the course title in once a
+  // category is chosen.
+  const titlesByCategory = courses.reduce((map, course) => {
+    map.set(course.category, [...(map.get(course.category) || []), course.title]);
+    return map;
+  }, new Map());
   const filterCourseCategories = [...courses.map((course) => course.category), 'Other'];
 
   const [students, setStudents] = useState([]);
@@ -764,6 +1017,7 @@ export default function AdminStudents() {
 
   const [invoiceLookup, setInvoiceLookup] = useState(null);
   const [linkLookup, setLinkLookup] = useState(null);
+  const [createLookup, setCreateLookup] = useState(null);
 
   const [formSections, setFormSections] = useState([]);
 
@@ -859,6 +1113,18 @@ export default function AdminStudents() {
       `Linked payment reference ${student.paymentReference} to ${getStudentDisplayName(student, formSections)}.`
     );
     setLinkLookup(null);
+    fetchStudents();
+  }
+
+  function handleStudentCreated(student, warning) {
+    setCreateLookup(null);
+    if (warning) {
+      setFetchError(warning);
+    } else {
+      setSuccessModal(
+        `Created ${getStudentDisplayName(student, formSections)} and linked payment reference ${student.paymentReference}.`
+      );
+    }
     fetchStudents();
   }
 
@@ -1284,7 +1550,13 @@ export default function AdminStudents() {
                   <tr>
                     <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                       {searchInput || activeFilterCount > 0 ? 'No students match your search or filters.' : 'No students registered yet.'}
-                      {invoiceLookup && <InvoiceLookupNotice lookup={invoiceLookup} onLink={() => setLinkLookup(invoiceLookup)} />}
+                      {invoiceLookup && (
+                        <InvoiceLookupNotice
+                          lookup={invoiceLookup}
+                          onLink={() => setLinkLookup(invoiceLookup)}
+                          onCreate={() => setCreateLookup(invoiceLookup)}
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -1429,6 +1701,8 @@ export default function AdminStudents() {
         <EditModal
           student={editStudent}
           sections={formSections}
+          levelByCategory={levelByCategory}
+          titlesByCategory={titlesByCategory}
           onClose={() => setEditStudent(null)}
           onSaved={handleEditSaved}
           onUnauthorized={handleUnauthorizedAccess}
@@ -1488,6 +1762,22 @@ export default function AdminStudents() {
           sections={formSections}
           onClose={() => setLinkLookup(null)}
           onLinked={handleReferenceLinked}
+          onCreateNew={() => {
+            setCreateLookup(linkLookup);
+            setLinkLookup(null);
+          }}
+          onUnauthorized={handleUnauthorizedAccess}
+        />
+      )}
+
+      {createLookup && (
+        <CreateStudentModal
+          lookup={createLookup}
+          sections={formSections}
+          levelByCategory={levelByCategory}
+          titlesByCategory={titlesByCategory}
+          onClose={() => setCreateLookup(null)}
+          onCreated={handleStudentCreated}
           onUnauthorized={handleUnauthorizedAccess}
         />
       )}

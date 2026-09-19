@@ -53,6 +53,12 @@ const admitStudent = async (req, res) => {
       return res.status(409).json({ message: 'This student is already shortlisted.' });
     }
 
+    if (student.paymentReference) {
+      return res.status(409).json({
+        message: `This student already has an invoice (payment reference ${student.paymentReference}), so shortlisting them would invoice them twice.`,
+      });
+    }
+
     const outcome = await shortlistAndInvoice(student);
     if (!outcome.ok) return res.status(outcome.status).json({ message: outcome.message });
 
@@ -82,6 +88,15 @@ const bulkAdmitStudents = async (req, res) => {
     for (const student of students) {
       if (student.admissionStatus === 'admitted') {
         results.push({ id: student.id, status: 'already_shortlisted' });
+        continue;
+      }
+
+      if (student.paymentReference) {
+        results.push({
+          id: student.id,
+          status: 'failed',
+          message: `This student already has an invoice (payment reference ${student.paymentReference}), so shortlisting them would invoice them twice.`,
+        });
         continue;
       }
 
