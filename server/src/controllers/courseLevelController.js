@@ -8,15 +8,16 @@ const getCourseLevels = async (req, res) => {
   try {
     const [rows, courses] = await Promise.all([
       prisma.courseLevel.findMany(),
-      prisma.course.findMany({ select: { category: true } }),
+      // The catalogue is the invoice site's, so only synced courses have levels
+      // to assign. Disabled ones stay listed — a course the sync has retired
+      // keeps its level for when it returns — but courses created by hand before
+      // the portal moved to invoice-only courses are no longer part of it. Their
+      // saved levels stay in the database, they're just not listed any more.
+      prisma.course.findMany({ where: { syncKey: { not: null } }, select: { category: true } }),
     ]);
     const levelByCategory = new Map(rows.map((row) => [row.category, row.level]));
 
-    // Live course catalogue (including new admin- or invoice-sync-created
-    // courses) union'd with any category that already has a saved level —
-    // so a category never disappears just because its course was disabled
-    // or removed after a level was set for it.
-    const categories = new Set([...courses.map((course) => course.category), ...levelByCategory.keys()]);
+    const categories = new Set(courses.map((course) => course.category));
 
     const courseLevels = Array.from(categories).map((category) => ({
       category,

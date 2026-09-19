@@ -243,12 +243,6 @@ function RegistrationForm({ sections, headingScale }) {
     setValue('courseCategoryOther', '', { shouldDirty: true, shouldValidate: true });
   };
 
-  const selectCustomCourse = () => {
-    setValue('courseCategory', 'Other', { shouldDirty: true, shouldValidate: true });
-    setValue('courseTitle', '', { shouldDirty: true, shouldValidate: true });
-    setValue('courseCategoryOther', '', { shouldDirty: true, shouldValidate: true });
-  };
-
   const headingStyle =
     headingScale && headingScale !== 1 ? { fontSize: `calc(1.5rem * ${headingScale})` } : undefined;
 
@@ -291,7 +285,8 @@ function RegistrationForm({ sections, headingScale }) {
                     {visibleCourses.length === 0 ? (
                       <div className="portal-data-card mb-5">
                         <p className="text-sm text-slate-600">
-                          No courses are currently listed for the <strong>{computerLiteracy}</strong> level. You can still choose a custom programme below.
+                          No courses are currently listed for the <strong>{computerLiteracy}</strong> level. Choose a
+                          different level in the ICT Skills &amp; Experience section above, or contact us for help.
                         </p>
                       </div>
                     ) : null}
@@ -311,9 +306,6 @@ function RegistrationForm({ sections, headingScale }) {
                                 : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
                             ].join(' ')}
                           >
-                            {course.imageUrl && (
-                              <img src={course.imageUrl} alt={course.title} className="h-48 w-full object-cover transition duration-500 group-hover:scale-105" />
-                            )}
                             <div className="space-y-3 p-5">
                               <div className="flex items-center justify-between gap-3">
                                 <h3 className={[selected ? 'text-white' : 'text-slate-900', 'text-lg font-semibold'].join(' ')}>{course.title}</h3>
@@ -330,56 +322,20 @@ function RegistrationForm({ sections, headingScale }) {
                         );
                       })}
 
-                      <button
-                        type="button"
-                        onClick={selectCustomCourse}
-                        className={[
-                          'flex min-h-[320px] flex-col justify-between rounded-[24px] border p-6 text-left transition duration-300',
-                          courseCategory === 'Other'
-                            ? 'border-gold-500 bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-white shadow-[0_22px_70px_rgba(253,200,0,0.32)]'
-                            : 'border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
-                        ].join(' ')}
-                      >
-                        <div>
-                          <span className={courseCategory === 'Other' ? 'inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white' : 'portal-kicker'}>
-                            Custom request
-                          </span>
-                          <h3 className={courseCategory === 'Other' ? 'mt-4 text-2xl font-semibold text-white' : 'mt-4 text-2xl font-semibold text-slate-900'}>Other programme</h3>
-                          <p className={courseCategory === 'Other' ? 'mt-3 text-sm text-white/90' : 'mt-3 text-sm text-slate-600'}>
-                            Choose this if you want a custom or not-yet-listed training option.
-                          </p>
-                        </div>
-                        <p className={courseCategory === 'Other' ? 'text-xs font-medium uppercase tracking-[0.2em] text-white/80' : 'text-xs font-medium uppercase tracking-[0.2em] text-blue-700'}>Flexible course selection</p>
-                      </button>
                     </div>
 
                     <ErrorMsg error={errors.courseCategory} />
+                    <ErrorMsg error={errors.courseTitle} />
 
-                    {courseCategory === 'Other' ? (
-                      <div className="mt-6 grid gap-5 md:grid-cols-2">
+                    <div className="mt-6">
+                      <div className="portal-data-card flex items-center justify-between gap-4">
                         <div>
-                          <FieldLabel>Course Title</FieldLabel>
-                          <input {...register('courseTitle')} className={getInputClass(errors.courseTitle)} placeholder="Selected course title or a custom title" />
-                          <ErrorMsg error={errors.courseTitle} />
-                        </div>
-
-                        <div>
-                          <FieldLabel>Course Category</FieldLabel>
-                          <input {...register('courseCategoryOther')} className={getInputClass(errors.courseCategoryOther)} placeholder="Please specify the course category" />
-                          <ErrorMsg error={errors.courseCategoryOther} />
+                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Current selection</p>
+                          <p className="mt-2 text-lg font-semibold text-slate-900">{courseTitle || 'Choose a course card'}</p>
+                          <p className="mt-1 text-sm text-slate-500">{courseCategory || 'No category selected yet'}</p>
                         </div>
                       </div>
-                    ) : (
-                      <div className="mt-6">
-                        <div className="portal-data-card flex items-center justify-between gap-4">
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Current selection</p>
-                            <p className="mt-2 text-lg font-semibold text-slate-900">{courseTitle || 'Choose a course card'}</p>
-                            <p className="mt-1 text-sm text-slate-500">{courseCategory || 'No category selected yet'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </>
                 )}
               </SectionCard>

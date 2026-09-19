@@ -16,6 +16,15 @@ const getInvoiceCourses = async (req, res) => {
   }
 };
 
+// A student's status follows their invoice: a paid invoice means they're done,
+// recorded as "completed", while any other invoice state still means they've been
+// invoiced, which is what "admitted" (shortlisted) records. Students linked to an
+// invoice they got directly from the invoice site are placed on this ladder the
+// moment their reference is linked, rather than being left pending.
+function admissionStatusForPayment(paymentStatus) {
+  return paymentStatus === 'paid' ? 'completed' : 'admitted';
+}
+
 // POST /invoices/status only matches the exact, case-sensitive reference. References
 // are issued in upper case ("GIK-ACA-…"), so a lower-cased paste is also tried in
 // upper case.
@@ -95,7 +104,11 @@ const linkPaymentReference = async (req, res) => {
 
     const updated = await prisma.student.update({
       where: { id },
-      data: { paymentReference: invoice.reference, paymentStatus: invoice.status },
+      data: {
+        paymentReference: invoice.reference,
+        paymentStatus: invoice.status,
+        admissionStatus: admissionStatusForPayment(invoice.status),
+      },
     });
 
     res.json({ message: 'Payment reference linked', student: updated });
@@ -137,10 +150,17 @@ const verifyPaymentStatuses = async (req, res) => {
 
     for (const student of students) {
       const status = statusByReference.get(student.paymentReference) ?? null;
+      let admissionStatus = null;
+
       if (status) {
-        await prisma.student.update({ where: { id: student.id }, data: { paymentStatus: status } });
+        admissionStatus = admissionStatusForPayment(status);
+        await prisma.student.update({
+          where: { id: student.id },
+          data: { paymentStatus: status, admissionStatus },
+        });
       }
-      results.push({ id: student.id, paymentReference: student.paymentReference, status });
+
+      results.push({ id: student.id, paymentReference: student.paymentReference, status, admissionStatus });
     }
 
     res.json({ results, skipped: ids.length - students.length });

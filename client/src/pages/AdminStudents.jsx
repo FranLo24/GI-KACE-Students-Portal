@@ -32,11 +32,15 @@ const STATIC_VIEW_SECTIONS = [
 const ADMISSION_BADGE_STYLES = {
   pending: 'bg-slate-100 text-slate-600',
   admitted: 'bg-emerald-100 text-emerald-700',
+  completed: 'bg-blue-100 text-blue-700',
 };
 
+// "Completed" is reached by paying: verifying a student whose invoice is paid
+// moves them there (see admissionStatusForPayment on the server).
 const ADMISSION_STATUS_LABELS = {
   pending: 'Pending',
   admitted: 'Shortlisted',
+  completed: 'Completed',
 };
 
 // Keyed by the status strings the invoice site's POST /invoices/status returns.
@@ -202,11 +206,17 @@ function ViewModal({ student, sections, onClose }) {
 // student picked. The editor follows the same rule. "Other" stays available, as
 // does whatever the student already has, so an existing choice is never dropped
 // from the list without the admin seeing it.
-function courseCategoryOptions(field, levelByCategory, literacy, currentValue) {
-  const options = field.options || [];
-  if (!literacy) return options;
+// Categories come from the live catalogue — which is the invoice site's, since
+// that's the only source of courses now — rather than the form builder's list, so
+// the editor offers exactly what the registration form does. "Other" stays for a
+// custom programme, and the student's saved category is kept even when it's no
+// longer on offer, so an existing choice is never silently dropped.
+function courseCategoryOptions(catalogueCategories, levelByCategory, literacy, currentValue) {
+  const options = [...catalogueCategories, 'Other'];
+  const allowed = literacy
+    ? options.filter((option) => option === 'Other' || levelByCategory.get(option) === literacy)
+    : options;
 
-  const allowed = options.filter((option) => option === 'Other' || levelByCategory.get(option) === literacy);
   if (currentValue && !allowed.includes(currentValue)) allowed.push(currentValue);
   return allowed;
 }
@@ -402,7 +412,12 @@ function EditModal({ student, sections, levelByCategory, titlesByCategory, onClo
                               isCourseCategory
                                 ? {
                                     ...field,
-                                    options: courseCategoryOptions(field, levelByCategory, literacy, student.courseCategory),
+                                    options: courseCategoryOptions(
+                                      titlesByCategory.keys(),
+                                      levelByCategory,
+                                      literacy,
+                                      student.courseCategory
+                                    ),
                                   }
                                 : field
                             }
@@ -436,13 +451,15 @@ function EditModal({ student, sections, levelByCategory, titlesByCategory, onClo
                     <button
                       type="button"
                       onClick={() => setAdmitConfirmOpen(true)}
-                      disabled={form.admissionStatus === 'admitted' || admitLoading}
+                      disabled={form.admissionStatus !== 'pending' || Boolean(form.paymentReference) || admitLoading}
                       className="portal-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {admitLoading
                         ? 'Shortlisting…'
-                        : form.admissionStatus === 'admitted'
-                        ? 'Shortlisted'
+                        : form.admissionStatus !== 'pending'
+                        ? ADMISSION_STATUS_LABELS[form.admissionStatus]
+                        : form.paymentReference
+                        ? 'Already invoiced'
                         : 'Shortlist'}
                     </button>
                   </div>
@@ -923,7 +940,10 @@ function CreateStudentModal({ lookup, sections, levelByCategory, titlesByCategor
                           key={field.key}
                           field={
                             isCourseCategory
-                              ? { ...field, options: courseCategoryOptions(field, levelByCategory, literacy, '') }
+                              ? {
+                                  ...field,
+                                  options: courseCategoryOptions(titlesByCategory.keys(), levelByCategory, literacy, ''),
+                                }
                               : field
                           }
                           value={values[field.key]}
@@ -1185,13 +1205,20 @@ export default function AdminStudents() {
   }
 
   // Merges verified statuses into the loaded list instead of refetching, which
-  // would jump back to page 1 and clear the selection.
+  // would jump back to page 1 and clear the selection. Verifying can also move a
+  // student to Completed, so the shortlist status is refreshed alongside.
   function applyPaymentStatuses(results) {
-    const statusById = new Map(results.filter((result) => result.status).map((result) => [result.id, result.status]));
+    const byId = new Map(results.filter((result) => result.status).map((result) => [result.id, result]));
     setStudents((prev) =>
-      prev.map((student) =>
-        statusById.has(student.id) ? { ...student, paymentStatus: statusById.get(student.id) } : student
-      )
+      prev.map((student) => {
+        const result = byId.get(student.id);
+        if (!result) return student;
+        return {
+          ...student,
+          paymentStatus: result.status,
+          admissionStatus: result.admissionStatus || student.admissionStatus,
+        };
+      })
     );
   }
 
@@ -1425,6 +1452,7 @@ export default function AdminStudents() {
                     <option value="">All</option>
                     <option value="pending">Pending</option>
                     <option value="admitted">Shortlisted</option>
+                    <option value="completed">Completed</option>
                   </select>
                 </div>
                 <div>
