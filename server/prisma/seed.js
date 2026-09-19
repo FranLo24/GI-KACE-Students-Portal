@@ -10,8 +10,8 @@ const seedStudents = [
     idType: 'Ghana Card',
     idTypeOther: null,
     idNumber: 'GHA-1847293',
-    phoneNumber: '0241000001',
-    alternativePhone: '0201000001',
+    phoneNumber: '+233241000001',
+    alternativePhone: '+233201000001',
     emailAddress: 'ama.mensah@example.com',
     residentialAddress: '12 Adenta Housing Road',
     cityTown: 'Accra',
@@ -29,7 +29,7 @@ const seedStudents = [
     relevantSkills: 'Basic networking and safe internet practices',
     emergencyName: 'Akosua Mensah',
     emergencyRelationship: 'Mother',
-    emergencyPhone: '0247000001',
+    emergencyPhone: '+233247000001',
     createdAt: new Date('2026-04-09T09:15:00.000Z'),
   },
   {
@@ -39,8 +39,8 @@ const seedStudents = [
     idType: 'Passport',
     idTypeOther: null,
     idNumber: 'P1234-5678',
-    phoneNumber: '0241000002',
-    alternativePhone: '0201000002',
+    phoneNumber: '+233241000002',
+    alternativePhone: '+233201000002',
     emailAddress: 'kojo.asare@example.com',
     residentialAddress: '8 Dansoman High Street',
     cityTown: 'Accra',
@@ -58,7 +58,7 @@ const seedStudents = [
     relevantSkills: 'Excel reporting, SQL basics, and Python scripting',
     emergencyName: 'Yaw Asare',
     emergencyRelationship: 'Brother',
-    emergencyPhone: '0247000002',
+    emergencyPhone: '+233247000002',
     createdAt: new Date('2026-04-10T11:30:00.000Z'),
   },
   {
@@ -68,7 +68,7 @@ const seedStudents = [
     idType: 'Ghana Card',
     idTypeOther: null,
     idNumber: 'GHA-2847293',
-    phoneNumber: '0241000003',
+    phoneNumber: '+233241000003',
     alternativePhone: null,
     emailAddress: 'efua.owusu@example.com',
     residentialAddress: '33 Fante New Town Road',
@@ -87,7 +87,7 @@ const seedStudents = [
     relevantSkills: 'Typing and internet browsing',
     emergencyName: 'Adwoa Owusu',
     emergencyRelationship: 'Sister',
-    emergencyPhone: '0247000003',
+    emergencyPhone: '+233247000003',
     createdAt: new Date('2026-04-11T08:05:00.000Z'),
   },
   {
@@ -97,8 +97,8 @@ const seedStudents = [
     idType: 'Ghana Card',
     idTypeOther: null,
     idNumber: 'GHA-3847293',
-    phoneNumber: '0241000004',
-    alternativePhone: '0201000004',
+    phoneNumber: '+233241000004',
+    alternativePhone: '+233201000004',
     emailAddress: 'kwame.boateng@example.com',
     residentialAddress: '17 Airport Residential Avenue',
     cityTown: 'Accra',
@@ -116,7 +116,7 @@ const seedStudents = [
     relevantSkills: 'Team leadership, presentations, and digital workflow tools',
     emergencyName: 'Mabel Boateng',
     emergencyRelationship: 'Spouse',
-    emergencyPhone: '0247000004',
+    emergencyPhone: '+233247000004',
     createdAt: new Date('2026-04-12T14:25:00.000Z'),
   },
   {
@@ -126,7 +126,7 @@ const seedStudents = [
     idType: 'Other',
     idTypeOther: 'Voter ID',
     idNumber: 'VOT-9182736',
-    phoneNumber: '0241000005',
+    phoneNumber: '+233241000005',
     alternativePhone: null,
     emailAddress: 'abena.frimpong@example.com',
     residentialAddress: '5 Asafo Market Lane',
@@ -145,7 +145,7 @@ const seedStudents = [
     relevantSkills: 'Spreadsheet modelling and dashboard interpretation',
     emergencyName: 'Kofi Frimpong',
     emergencyRelationship: 'Father',
-    emergencyPhone: '0247000005',
+    emergencyPhone: '+233247000005',
     createdAt: new Date('2026-04-13T10:40:00.000Z'),
   },
   {
@@ -155,8 +155,8 @@ const seedStudents = [
     idType: 'Passport',
     idTypeOther: null,
     idNumber: 'P2234-5678',
-    phoneNumber: '0241000006',
-    alternativePhone: '0201000006',
+    phoneNumber: '+233241000006',
+    alternativePhone: '+233201000006',
     emailAddress: 'yaw.bediako@example.com',
     residentialAddress: '44 Takoradi Harbour Road',
     cityTown: 'Takoradi',
@@ -174,7 +174,7 @@ const seedStudents = [
     relevantSkills: 'Cable management and router setup',
     emergencyName: 'Esi Bediako',
     emergencyRelationship: 'Mother',
-    emergencyPhone: '0247000006',
+    emergencyPhone: '+233247000006',
     createdAt: new Date('2026-04-14T16:10:00.000Z'),
   },
   {
@@ -184,7 +184,7 @@ const seedStudents = [
     idType: 'Ghana Card',
     idTypeOther: null,
     idNumber: 'GHA-4847293',
-    phoneNumber: '0241000007',
+    phoneNumber: '+233241000007',
     alternativePhone: null,
     emailAddress: 'naa.lamptey@example.com',
     residentialAddress: '19 Spintex Coastal Road',
@@ -203,7 +203,7 @@ const seedStudents = [
     relevantSkills: 'Content planning and website updates',
     emergencyName: 'Sika Lamptey',
     emergencyRelationship: 'Aunt',
-    emergencyPhone: '0247000007',
+    emergencyPhone: '+233247000007',
     createdAt: new Date('2026-04-15T07:55:00.000Z'),
   },
   {
@@ -213,8 +213,8 @@ const seedStudents = [
     idType: 'Ghana Card',
     idTypeOther: null,
     idNumber: 'GHA-5847293',
-    phoneNumber: '0241000008',
-    alternativePhone: '0201000008',
+    phoneNumber: '+233241000008',
+    alternativePhone: '+233201000008',
     emailAddress: 'daniel.tetteh@example.com',
     residentialAddress: '27 Koforidua Mission Road',
     cityTown: 'Koforidua',
@@ -232,7 +232,7 @@ const seedStudents = [
     relevantSkills: 'Basic computer maintenance and word processing',
     emergencyName: 'Grace Tetteh',
     emergencyRelationship: 'Mother',
-    emergencyPhone: '0247000008',
+    emergencyPhone: '+233247000008',
     createdAt: new Date('2026-04-16T13:20:00.000Z'),
   },
   {
@@ -242,7 +242,7 @@ const seedStudents = [
     idType: 'Passport',
     idTypeOther: null,
     idNumber: 'P3234-5678',
-    phoneNumber: '0241000009',
+    phoneNumber: '+233241000009',
     alternativePhone: null,
     emailAddress: 'mavis.koomson@example.com',
     residentialAddress: '6 Cape Coast Castle Road',
@@ -261,7 +261,7 @@ const seedStudents = [
     relevantSkills: 'Data cleaning and report writing',
     emergencyName: 'Kweku Koomson',
     emergencyRelationship: 'Brother',
-    emergencyPhone: '0247000009',
+    emergencyPhone: '+233247000009',
     createdAt: new Date('2026-04-17T09:45:00.000Z'),
   },
   {
@@ -271,8 +271,8 @@ const seedStudents = [
     idType: 'Other',
     idTypeOther: 'Driver License',
     idNumber: 'DL-9182736',
-    phoneNumber: '0241000010',
-    alternativePhone: '0201000010',
+    phoneNumber: '+233241000010',
+    alternativePhone: '+233201000010',
     emailAddress: 'samuel.ofori@example.com',
     residentialAddress: '15 Sunyani College Road',
     cityTown: 'Sunyani',
@@ -290,7 +290,7 @@ const seedStudents = [
     relevantSkills: 'Hardware repairs and small office network support',
     emergencyName: 'Comfort Ofori',
     emergencyRelationship: 'Sister',
-    emergencyPhone: '0247000010',
+    emergencyPhone: '+233247000010',
     createdAt: new Date('2026-04-18T15:05:00.000Z'),
   },
   {
@@ -300,7 +300,7 @@ const seedStudents = [
     idType: 'Ghana Card',
     idTypeOther: null,
     idNumber: 'GHA-6847293',
-    phoneNumber: '0241000011',
+    phoneNumber: '+233241000011',
     alternativePhone: null,
     emailAddress: 'priscilla.nortey@example.com',
     residentialAddress: '11 Ho Municipal Avenue',
@@ -319,7 +319,7 @@ const seedStudents = [
     relevantSkills: 'Document management and spreadsheet reporting',
     emergencyName: 'Janet Nortey',
     emergencyRelationship: 'Mother',
-    emergencyPhone: '0247000011',
+    emergencyPhone: '+233247000011',
     createdAt: new Date('2026-04-19T10:10:00.000Z'),
   },
   {
@@ -329,8 +329,8 @@ const seedStudents = [
     idType: 'Passport',
     idTypeOther: null,
     idNumber: 'P4234-5678',
-    phoneNumber: '0241000012',
-    alternativePhone: '0201000012',
+    phoneNumber: '+233241000012',
+    alternativePhone: '+233201000012',
     emailAddress: 'elvis.adu@example.com',
     residentialAddress: '9 Tamale Central Link',
     cityTown: 'Tamale',
@@ -348,7 +348,7 @@ const seedStudents = [
     relevantSkills: 'Operational reporting and team productivity tools',
     emergencyName: 'Latifa Adu',
     emergencyRelationship: 'Spouse',
-    emergencyPhone: '0247000012',
+    emergencyPhone: '+233247000012',
     createdAt: new Date('2026-04-20T12:35:00.000Z'),
   },
 ];
@@ -428,7 +428,7 @@ const otherIdTypes = ['Voter ID', 'Driver License', 'NHIS Card'];
 const otherEducationLevels = ['Professional Certificate', 'Technical Certificate', 'Vocational Training'];
 
 function padNumber(value) {
-  return String(value).padStart(4, '0');
+  return String(value).padStart(6, '0');
 }
 
 function buildGeneratedStudent(index) {
@@ -459,8 +459,8 @@ function buildGeneratedStudent(index) {
         : idType === 'Passport'
           ? `P${52000000 + offset}`
           : `ID-${7300000 + offset}`,
-    phoneNumber: `0241${padNumber(offset)}`,
-    alternativePhone: index % 3 === 0 ? `0201${padNumber(offset)}` : null,
+    phoneNumber: `+233241${padNumber(offset)}`,
+    alternativePhone: index % 3 === 0 ? `+233201${padNumber(offset)}` : null,
     emailAddress: `${firstName.toLowerCase()}.${surname.toLowerCase()}${offset}@example.com`,
     residentialAddress: `${20 + offset} ${streetNames[index % streetNames.length]}`,
     cityTown,
@@ -478,7 +478,7 @@ function buildGeneratedStudent(index) {
     relevantSkills: skills[index % skills.length],
     emergencyName,
     emergencyRelationship: relationships[index % relationships.length],
-    emergencyPhone: `0247${padNumber(offset)}`,
+    emergencyPhone: `+233247${padNumber(offset)}`,
     createdAt: new Date(Date.UTC(2026, 3, (index % 28) + 1, 8 + (index % 9), (index * 7) % 60, 0)),
   };
 }
